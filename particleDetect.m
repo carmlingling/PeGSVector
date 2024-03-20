@@ -1,41 +1,39 @@
 %function particle_detect(directory)
 % A script to find particle locations
 function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
-
+% directory = './';
+% imname = 'test.jpg';
+% radiusRange = [40, 57];
+% boundaryType = "annulus";
+% verbose = false;
 
     if boundaryType == "annulus"
         
         images=dir([directory, '/warpedimg/',imname(1:end-4),'warped.tif']);
         nFrames = length(images);
-         cen = [71+5313/2, 110+5313/2];
-         rad = [2783/2, 5313/2]; %measured in imageJ, pixels
+        cen = [2710, 2768]; %measure the center of annulus in images taken by the camera
+        rad = [2830/2, 5330/2];
+        % cen = [71+5313/2, 110+5313/2];
+         %rad = [2783/2, 5313/2]; %measured in imageJ, pixels in untransformed image should be same as preprocess
          R_overlap = 15; %how much do the particle have to overlap by to remove double detected particles
-
+        dtol = 25; %distance from edge
   
 
         for frame = 1:nFrames
-            
+            frame
             im = imread([images(frame).folder,'/', images(frame).name]);
             red = im(:,:,1);
             green = im(:,:,2);
-            red = imsubtract(red, green*0.2);
-            
+            red = imsubtract(red, green*0.2); %this works for the annulus images, removes excess green
+            red = imadjust(red, [0.20,0.65]); %this works for annulus, might need to tweak, brightens image
 
-            red = imadjust(red, [0.20,0.65]); %this works for annulus, might need to tweak
-%             figure;
-%             imshow(red)
-%             drawnow
-            sigma = 50; % choosen by visual inspection
+            sigma = 50; % chosen by visual inspection
             G = fspecial('gaussian', 3*sigma+1, sigma);
-            yb = imfilter(red, G, 'replicate');
-            %imshow(yb)
+            yb = imfilter(red, G, 'replicate'); %removes large scale image features like bright spots
             red = bsxfun(@minus, red,yb);
-%             figure;
-%             imshow(red)
-%             title('red2')
-%             drawnow
-            green =imadjust(green);
-            %
+
+            
+            % if you want to check out the images
             if verbose == true
                 h1 = figure(1);
                 ax1 = axes('Parent', h1);
@@ -44,39 +42,37 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
                 imshow(red)
 
                 subplot(1, 2, 2)
+                green =imadjust(green);
                 imshow(green);
                 hold on;
                 axis on
             end
 
 
-            [centers,radii,metrics]=imfindcircles(red,radiusRange,'objectpolarity','dark','sensitivity',0.945,'method','twostage','EdgeThreshold',0.02);
+            [centers,radii,metrics]=imfindcircles(red,radiusRange,'objectpolarity','dark','sensitivity',0.945,'method','twostage','EdgeThreshold',0.02);%values found by tweaking
 %% 
             xt = centers(:,1);
             yt = centers(:,2);
             rt = radii;
+            
 
-            for r=1:length(rt) %binarize radius
-                if rt(r)>49
-                    rt(r) = 55;
-                else
-                    rt(r) = 44;
-                end
-            end
-
+            %binarize radius
+            rt(rt<49) = 44;
+            rt(rt>49) = 55;
+     %%      %beginning cleaning section
 
             %convert back to real space
-            [midx,~] = size(red);
-            [theta,r] = cart2pol(xt-midx/2,yt-midx/2);
+            [midx,midy] = size(red);
+            [theta,r] = cart2pol(xt-midx/2,yt-midy/2);
 
-            d = -6.5*r.^2/(200*(925+6.5)); %6.5 is the thickness of the particles in mm, 1000 is distance between particles and camera lens in mm
+            d = -6.5*r.^2/(200*(925+6.5)); %6.5 is the thickness of the particles in mm, 925 is distance between particles and camera lens in mm
             rmax = max(r(:));
             s1 = d+r;
             [ut,vt] = pol2cart(theta,s1);
-            ui = ut + midx/2;
-            vi = vt + midx/2;
+            ut = ut + midx/2;
+            vt = vt + midy/2;
 
-            ifcn = @(c) [ui(:) vi(:)];
+            ifcn = @(c) [ut(:) vt(:)];
             tform = geometricTransform2d(ifcn);
             [uv] = transformPointsInverse(tform, [0,0]); %particle original coordinates
             u = uv(:,1)-400;
@@ -94,6 +90,7 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
 %             end
 
             %remove some of the misfound particles too close to the center
+            
             radialPos = sqrt((u-cen(1)).^2+(v-cen(2)).^2);
             closeind = find(radialPos <= rad(1)+15 );
             closeind = sortrows(closeind, 'descend');
@@ -122,6 +119,7 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
             badind = zeros(length(f1),1);
 
             M = length(f1);
+            %this picks out the worse circle
             for n=1:M
                 if metrics(f1(n)) > metrics(f2(n))
                     badind(n) = f2(n);
@@ -141,7 +139,7 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
             metrics(badind)= [];
             u(badind) = [];
             v(badind) = [];
-
+            
             if verbose
                 viscircles([u, v], rt,'EdgeColor','g'); %draw particle outline
                 hold on;
@@ -161,7 +159,7 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
             badin2 = unique(f2);
 
             for n=1:M
-                sum(f2 == badin2(n))
+                sum(f2 == badin2(n));
                 if  sum(f2 == badin2(n))>2
                     if rt(badind(n)) > 49
                         rt(badind(n)) = 44;
@@ -177,7 +175,7 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
 
 
             %%
-            dtol = 25;
+            
             radialPos = sqrt((u-cen(1)).^2+(v-cen(2)).^2);
             owi= find(radialPos <= rad(2)+2.5*dtol &radialPos >=rad(2)-2.5*dtol);
             iwi = find(radialPos <= rad(1)+3.5*dtol &radialPos >=rad(1)-2.5*dtol);
@@ -185,13 +183,8 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
             edges(owi) = 1;
             edges(iwi) = -1;
             particle = [xt, yt, rt, edges];
-            %viscircles([u(owi), v(owi)], rt(owi), 'Edgecolor', 'c');
-            %viscircles([u(iwi), v(iwi)], rt(iwi), 'Edgecolor', 'm');
-%             imshow(red)
-%             viscircles([xt, yt], rt, 'Edgecolor', 'm');
-            dlmwrite([directory,'warpedimg/', images(frame).name(1:end-4),'_centers.txt'], particle)
-            %save([directory, images(frame).name(1:end-4),'centers_Improved.mat'], 'particle')
-            % save('./DATA/test5centers_Improved.mat', 'particle')
+            
+            writematrix(particle,[directory,'warpedimg/', images(frame).name(1:end-4),'_centers.txt'])
         end
 
     elseif boundaryType == "airtable"
@@ -271,10 +264,7 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
             rwi = find(centers(:,1)+radii >= rpos-dtol);
             uwi = find(centers(:,2)+radii >= upos-dtol);
             bwi = find(centers(:,2)-radii <= bpos+dtol); %need to add edge case of corner particle
-            viscircles(centers(lwi,:), radii(lwi), 'EdgeColor', 'b');
-            viscircles(centers(rwi,:), radii(rwi),'EdgeColor', 'k');
-            viscircles(centers(bwi,:), radii(bwi),'EdgeColor', 'w');
-            viscircles(centers(uwi,:), radii(uwi),'EdgeColor', 'g');
+            
             edges = zeros(length(radii), 1);
             edges(rwi) = 1;
             edges(lwi) = -1;
@@ -288,8 +278,8 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
                 end
             end
             particle = [centers(:,1), centers(:,2), radii, edges];
-            [directory, images(frame).name(1:end-4),'_centers.txt']
-            dlmwrite([directory, images(frame).name(1:end-4),'_centers.txt'], particle);
+            %[directory, images(frame).name(1:end-4),'_centers.txt']
+            writematrix(particle,[directory, images(frame).name(1:end-4),'_centers.txt']);
 
         end
     end

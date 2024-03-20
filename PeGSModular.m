@@ -12,10 +12,10 @@ function PeGSModular(topDirectory, imageNames)
 %%User input values
 %topDirectory = '/mnt/ncsudrive/c/cllee3/MyEno/DATA/jekollme/20160701/Steps/artificial/'
 %topDirectory = '/eno/cllee3/DATA/esbilili/20160112reprocessed/' % location of image files
-topDirectory = '/eno/cllee3/DATA/240226/run1/'
+topDirectory = './testdata/'
 %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
 % %topDirectory = './DATA/test/Step09/'
-imageNames = '75Hz*.jpg' %image format and regex
+imageNames = '100Hz*.tif' %image format and regex
 frameidind = 15
 %
 files = dir([topDirectory,imageNames])
@@ -30,20 +30,23 @@ if not(isfolder(append(topDirectory,'synthImg'))) %make a new folder with warped
 end
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%preprocess(topDirectory, imageNames, boundaryType, verbose);
+preprocess(topDirectory, imageNames, boundaryType, verbose);
 'files done preprocessing'
 %%
-%particleDetect(topDirectory, imageNames, radiusRange, boundaryType, verbose);
+particleDetect(topDirectory, imageNames, radiusRange, boundaryType, verbose);
 'particles detected'
 %%
-%particleTrack(topDirectory, imageNames, boundaryType, frameidind, verbose);
+particleTrack(topDirectory, imageNames, boundaryType, frameidind, verbose);
 'trajectories connected'
 %%
 %contactDetection(topDirectory, imageNames, boundaryType,frameidind, verbose)
 'contacts detected'
 %%
 %diskSolve(topDirectory, imageNames, boundaryType, verbose)
+'forces solved'
 %%
 %newtonize(topDirectory, imageNames, boundaryType, verbose)
+'newtonized and edges handled'
 %%
-adjacencyMatrix(topDirectory, imageNames, boundaryType, frameidind,verbose)
+%adjacencyMatrix(topDirectory, imageNames, boundaryType, frameidind,verbose)
+'Adjacency matrix built'
