@@ -18,7 +18,7 @@ dtol=10;
 %find guess for array size
 posData = load([directory, datafiles(1).name]);
 nFrames = length(datafiles);    
-skipamount = length(posData)+200;
+skipamount = length(posData)+200; %I chose this as a result of my system size, could and should be altered based on your specific system and variability in finding particles
 centers = nan(nFrames*skipamount, 6);
 if boundaryType == "airtable"
     for frame = 1:nFrames
@@ -27,7 +27,7 @@ if boundaryType == "airtable"
     
         posData = load([directory, datafiles(frame).name]);
     
-        frameid = str2double(datafiles(frame).name(frameidind:frameidind+3))
+        frameid = str2double(datafiles(frame).name(frameidind:frameidind+3));
         %posData = new;
         frameNumber = ones(length(posData),1)*frameid;
         id = 1:length(posData);
@@ -94,74 +94,52 @@ param = struct('mem', 50, 'good', 0,'dim',2,'quiet',0);
 linked = track(posArray, 30, param);
 
 
+%%
+%swap the old indices for the tracked indices
 
-%carry radii information along too
-radind = zeros(length(centers),1);
-edgesind = zeros(length(centers),1);
-for l = 1:length(centers)
-    ind = find(posArray(l,1) == linked(:,1) & posArray(l,2) ==linked(:,2));
-    radind(ind) = centers(l,5);
-    edgesind(ind) = centers(l,6);
+neworder = zeros(length(posArray),6);
+start = 1;
+for f = 1:nFrames %note that we're splitting the data by frame number because it isn't guaranteed that particles won't be found in the exact same position, frame to frame
+    frameid = str2double(datafiles(f).name(frameidind:frameidind+3));
+    ind = find(linked(:,3) == frameid);
+    xy = linked(ind,:);
+    xy = sortrows(xy, [1,2]); %
+    
+    ind2 = find(centers(:,1) == frameid);
+    slice = centers(ind2,:);
+    sortedslice = sortrows(slice, [3,4]);
+    
+    sortedslice(:,2) = xy(:,4);
+
+    neworder(start:length(sortedslice)+start-1,:)=sortedslice;
+    start = start+ length(sortedslice);
 end
+neworder =sortrows(neworder,[1,2]);
 
-rearrange = [linked(:,3),linked(:,4), linked(:,1), linked(:,2), radind, edgesind];
-rearrange = sortrows(rearrange);
-% %% don't know why I wrote this but I am scared to delete
-% P = length(rearrange);
-% rearrange = [rearrange; zeros(1700, 6)];
-% all_particleIDs = unique(rearrange(:,2));
-% for l=1:length(all_particleIDs)
-%     framevalue = rearrange(find(rearrange(:,2)==all_particleIDs(l)),1);
-%     frameind = find(rearrange(:,2)==all_particleIDs(l));
-%     for m=1:length(framevalue)-1
-%         if framevalue(m+1)-framevalue(m)>1
-%             counter = 1;
-%             filler = framevalue(m)+1:framevalue(m+1)-1;
-%             x = rearrange(frameind(m+1),3);
-%             x2 = rearrange(frameind(m), 3);
-%             y = rearrange(frameind(m+1), 4);
-%             y2 = rearrange(frameind(m), 4);
-%             for n=1:length(filler)
-%                 xi = x+uint16(n*(x2-x)/length(filler));
-%                 yi = y+uint16(n*(y2-y)/length(filler));
-%                
-%                 rearrange(P+counter,:) = [filler(n), all_particleIDs(l), xi, yi, rearrange(frameind(m),5), 0];
-%                 counter = counter+1;
-%             end
-%        
-%         end
-%     end
-% end
-% rearrange(~any(rearrange,2),:)=[];
-% rearrange = sortrows(rearrange);
-% length(rearrange)
-% 
-% 
-% 
-% 
-out = fopen([directory,'centers_tracked.txt'],'w');
+
+dout = fopen([directory,'centers_tracked.txt'],'w');
 fprintf(out,['frame', ',', 'particleID', ',', 'x' ',' 'y', ',','r',',','edge''\n']);
 fclose(out);
-writematrix(rearrange,[directory,'centers_tracked.txt'], 'WriteMode', 'append');
+writematrix(neworder,[directory,'centers_tracked.txt'], 'WriteMode', 'append');
 
 
 %exports original positions
 if boundaryType == "annulus"
-    rearrange2 = rearrange;
+    rearrange2 = neworder;
     x = rearrange(:,3);
     y = rearrange(:,4);
 
     midx = 6304; %size of image
     [theta,r] = cart2pol(x-midx/2,y-midx/2);
 
-    d = -6.5*r.^2/(200*(925+6.5)); %6.5 is the thickness of the particles in mm, 1000 is distance between particles and camera lens in mm
-    rmax = max(r(:));
+    d = -6.5*r.^2/(200*(925+6.5)); %6.5 is the thickness of the particles in mm, 925 is distance between particles and camera lens in mm
+    
     s1 = d+r;
     [ut,vt] = pol2cart(theta,s1);
-    ui = ut + midx/2;
-    vi = vt + midx/2;
+    ut = ut + midx/2;
+    vt = vt + midx/2;
 
-    ifcn = @(c) [ui(:) vi(:)];
+    ifcn = @(c) [ut(:) vt(:)];
     tform = geometricTransform2d(ifcn);
     [uv] = transformPointsInverse(tform, [0,0]); %particle original coordinates
     u = uv(:,1)-400;

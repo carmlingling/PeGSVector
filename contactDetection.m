@@ -1,92 +1,30 @@
-function contactDetection(directory, fileNames, boundaryType,frameidind,verbose)
+%function contactDetection(directory, fileNames, boundaryType,frameidind,verbose)
 % %UNTITLED4 Summary of this function goes here
 % %   Detailed explanation goes here
 % 
 % 
+directory = './testdata/';
+%topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
+% %topDirectory = './DATA/test/Step09/'
+fileNames = '100Hz*.tif'; %image format and regex
+frameidind = 15;
+%
 
+boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
+radiusRange = [40, 57];
+%radiusRange = [45, 78]; %airtable
 
-% directory = '/eno/cllee3/DATA/240226/run1/'
-% %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
-% % %topDirectory = './DATA/test/Step09/'
-% fileNames = '75Hz*.jpg' %image format and regex
-% frameidind = 15
-% %
-% files = dir([directory,fileNames])
-% boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
-% radiusRange = [40, 57];
-% %radiusRange = [45, 78]; %airtable
-% 
-% verbose = false;
-% % comment out this section if running in PeGSDiskPrep.m
-%   clear particle;
-% % % %
-% % % %
-% % % % %directory = '/mnt/ncsudrive/c/cllee3/MATLAB/PEGS-master/DATA/';
-% directory = '/eno/cllee3/DATA/jekollme/20160711/Steps/step09/'
-% % %directory = '/eno/cllee3/DATA/230428/run2/warpedimg/'
-% % %directory = './DATA/warpedimg/'
-% % directory = './DATA/'
-% fileNames = '*0532.jpg'
-% boundaryType ="airtable"
-% verbose = false
-% % %filename = ''
-%files = dir([directory, filename]);
-% Img = imread([directory,files(1).name]);%particle image
-% 
-% 
-% Rimg = Img(:,:,1);
-% Gimg = Img(:,:,2);
-% bckgnd = poly2mask([2730,2724,3651,3661],[212,212,6099,6100], length(Gimg), length(Gimg));
-% %Gimgfine = histeq(Gimg);
-% 
-% % Gimgfine = im2double(Gimg);
-% % histogram(Gimgfine)
-% %  Gimgfine = imadjust(Gimgfine, [13/255, 39/255]);
-% %adjusting image contrast
-% 
-% Gimg=imsubtract(Gimg,Rimg./20);
-% Gimg = im2double(Gimg);
-% Gimg = Gimg.*~bckgnd;
-% %Gimg = Gimg.*(Gimg > 0);
-% %Gimg = imadjust(Gimg,[0, 0.6]);
-% 
-% % figure;
-% % imshow(Gimgfine)
-% %read in particle position information and put into 'particle' structure
-% centersfile = dir([directory, 'centers_tracked.txt'])
-% pData = dlmread([directory,centersfile.name],',', 1,0); %Read Position data from centers file
-% frame =1;
-% data = find(pData(:,1) == frame);
-%         
-%    N = size(data,1);
-%         
-%         particle(1:N) = struct('id',0,'x',0,'y',0,'r',0,'rm',0,'color','','fsigma',0,'z',0,'f',0,'g2',0,'forces',[],'betas',[],'alphas',[],'neighbours',[],'contactG2s',[],'forceImage',[], 'nonContact', [], 'contactPos', [], 'contactInt', [], 'edge', 0);
-%         for n = 1:N %Bookkeeping
-%             particle(n).id= pData(data(n),2);
-%             particle(n).x = pData(data(n),3); %-xoffset;
-%             particle(n).y = pData(data(n),4); %-yoffset;
-%             particle(n).r = pData(data(n),5);
-%             particle(n).edge = pData(data(n), 6);
-%             
-%         end
-% 
-% verbose = true;
-% fsigma = 141; %photoelastic stress coefficient
-% g2cal = 145; %Calibration Value for the g^2 method, can be computed by joG2cal.m
-% dtol = 30; % How far away can the outlines of 2 particles be to still be considered Neighbours
-% 
-% contactG2Threshold = 1; %sum of g2 in a contact area larger than this determines a valid contact
-% CR = 15;
+verbose = false;
 % % % % % % % % % 
 
-%% 
+%% calibrating values
+calibrate = false;
  particleNumber1 = 1566;
  particleNumber2 = 1639;
-%verbose = false;
-  
-% width = 18;
-padding =1;
 
+  
+
+%% thresholding limits
 if boundaryType == "airtable"
     minpeakheight = 0.35;
     minpeakprominence = 0.10;
@@ -95,15 +33,15 @@ if boundaryType == "airtable"
     fsigma = 100; %photoelastic stress coefficient
     g2cal = 100; %Calibration Value for the g^2 method, can be computed by joG2cal.m
     dtol = 15; % How far away can the outlines of 2 particles be to still be considered Neighbours
-
     contactG2Threshold = 5; %sum of g2 in a contact area larger than this determines a valid contact
     CR = 10;
-    imadjust_limits = [0, 1]
-    fineimadjust_limits = [0, 100/255]
-    rednormal = 2
+    imadjust_limits = [0, 1];
+    fineimadjust_limits = [0, 100/255];
+    rednormal = 2;
+    padding =1;
+    sigma = 80; % ephraim
 elseif boundaryType == "annulus"
-    directory = [directory, 'warpedimg/']
-    
+    directory = [directory, 'warpedimg/'];
     minpeakheight = 0.10;
     minpeakprominence = 0.02;
     minpeakprom_main = 0.025;
@@ -111,49 +49,46 @@ elseif boundaryType == "annulus"
     fsigma = 141; %photoelastic stress coefficient
     g2cal = 145; %Calibration Value for the g^2 method, can be computed by joG2cal.m
     dtol = 30; % How far away can the outlines of 2 particles be to still be considered Neighbours
-
     contactG2Threshold = 1; %sum of g2 in a contact area larger than this determines a valid contact
     CR = 15; 
-    imadjust_limits = [0, 0.6]
-    fineimadjust_limits = [0/255, 30/255]%[13/255, 39/255]
-    rednormal = 8
+    imadjust_limits = [0, 0.6];
+    fineimadjust_limits = [0/255, 30/255];%[13/255, 39/255]
+    rednormal = 8;
+    padding = 1;
+    sigma  = 50; %for blurring large scale features
+    polarizerstrip = [[2731,2719,3643,3666];[212,212,6099,6100]];
 end
+
+%% importing files
 
 [directory, fileNames]
 files = dir([directory, fileNames(1:end-4), '.tif']);
-
 centersfile = dir([directory, 'centers_tracked.txt']);
-pData = dlmread([directory,centersfile.name],',', 1,0); %Read Position data from centers file
-%frame =1
-length(files)
-for imgnumb = 1:length(files)
-%for imgnumb = 344:length(files)-344
-    clear particle
-    imgnumb = imgnumb
-    frame = str2num(files(imgnumb).name(frameidind:frameidind+3))
-    data = find(pData(:,1) == frame);
-    if ~isempty(data)
-        
-
-        N = size(data,1);
-
-        particle(1:N) = struct('id',0,'x',0,'y',0,'r',0,'rm',0,'color','','fsigma',0,'z',0,'f',0,'g2',0,'forces',[],'betas',[],'alphas',[],'neighbours',[],'contactG2s',[],'forceImage',[], 'nonContact', [], 'contactPos', [], 'contactInt', [], 'edge', 0);
-        for n = 1:N %Bookkeeping
-            particle(n).id= pData(data(n),2);
-            particle(n).x = pData(data(n),3); %-xoffset;
-            particle(n).y = pData(data(n),4); %-yoffset;
-            particle(n).r = round(pData(data(n),5));
-            particle(n).edge = pData(data(n), 6);
-            particle(n).rm = particle(n).r*pxPerMeter;
-            particle(n).fsigma = fsigma;
-        end
+pData = readmatrix([directory,centersfile.name],"NumHeaderLines", 1); %Read Position data from centers file
 
 
-    Img = imread([directory,files(imgnumb).name]);%particle image
+%% setting up mask
+
+
+
+mask = abs(-CR:CR);
+mask = mask.^2 + mask.^2';
+maskCR = double(sqrt(mask) <= CR-1);
+
+
+
+
+
+%% image manipulation
+for imgnumb = 1:1
+    
+    clear particle %reinitialize the particle structure
+
+    %read in image
+    Img = imread([directory,files(imgnumb).name]);
     Rimg = Img(:,:,1);
     Gimg = Img(:,:,2); %force image
    
-    
     
     if boundaryType == "airtable"
         %Gimgp=imsubtract(Gimg,Rimg.*0.5);
@@ -164,238 +99,152 @@ for imgnumb = 1:length(files)
         %Gimgd= im2double(Gimgd);
         stretchlim(Gimgp)
         Gimgd = imadjust(Gimgd,stretchlim(Gimgd));
-        figure;
-        imshow(Gimgp)
-        viscircles([pData(data,3), pData(data,4)], round(pData(data,5)))
-        title('Gimgp')
-        Gimgp = imadjust(Gimgp,[0,0.6]);
+        if verbose
+            figure;
+            imshow(Gimgp)
+            viscircles([pData(data,3), pData(data,4)], round(pData(data,5)))
+            title('Gimgp')
+            Gimgp = imadjust(Gimgp,[0,0.6]);
+        end
 
-%         figure
-%         imshow(Gimgd)
+    elseif boundaryType == "annulus"
+        
+        bckgnd = poly2mask(polarizerstrip(1,:),polarizerstrip(2,:), length(Gimg), length(Gimg));
+        Gimg = inpaintCoherent(Gimg,bckgnd,'SmoothingFactor',5,'Radius',15);
+        
+        if calibrate == true
+           figure;
+           imshow(Gimg);
+           hold on
+           plot([2731,2719,3643,3666, 2731],[212,212,6099,6100, 212],'b','LineWidth',1)
+           drawnow;
+        end
+        
+        Gimg=imsubtract(Gimg,Rimg./rednormal);
+   
+        G = fspecial('gaussian', 3*sigma+1, sigma);
+        yb = imfilter(imcomplement(Rimg), G, 'replicate');
+        Gimg = bsxfun(@minus, Gimg,yb*.09);
+
+        Gimg= im2double(Gimg);
+        Gimg = Gimg.*(Gimg > 0);
+    
+    
+        Gimgd = imadjust(Gimg,imadjust_limits); %regular contrast
+    
+        Gimgfine = imadjust(Gimg, fineimadjust_limits); %super boosted contrast
+    
+
     end
+   
+%% initialize data structure
+    
+    frame = str2double(files(imgnumb).name(frameidind:frameidind+3))
+    
+    data = find(pData(:,1) == frame);%from the centers information, find the particles that are in a the
+    %current frame
+    
+    if ~isempty(data)
 
- if boundaryType == "annulus"
-   bckgnd = poly2mask([2731,2719,3643,3666],[212,212,6099,6100], length(Gimg), length(Gimg));
-   Gimg = inpaintCoherent(Gimg,bckgnd,'SmoothingFactor',5,'Radius',15);
- 
-%    figure;
-%    imshow(imadjust(Gimg, [0,0.15]));
-%    hold on
-%    plot([2731,2719,3643,3666, 2731],[212,212,6099,6100, 212],'b','LineWidth',1)
-%    drawnow;
-   Gimg=imsubtract(Gimg,Rimg./rednormal);
-   sigma  = 50
-    G = fspecial('gaussian', 3*sigma+1, sigma);
-    yb = imfilter(imcomplement(Rimg), G, 'replicate');
-%     figure;
-%     imshow(yb)
-%     drawnow;
-    Gimg = bsxfun(@minus, Gimg,yb*.09);
-    
-%     figure;
-%     imshow(Gimg)
-    %sigma = 80; % choosen by visual inspection ephraim
-    
-   Gimg= im2double(Gimg);
-%Gimg = Gimg-0.5*Rimg;
-    Gimg = Gimg.*(Gimg > 0);
-    
-    
-    Gimgd = imadjust(Gimg,imadjust_limits);
-%     figure;
-%     imshow(Gimgd)
-%     
-%     title('Gimgd')
-    %Gimgp = imadjust(Gimg,stretchlim(Gimg));
-    Gimgp = Gimg;
-    
-%     figure;
-%     imshow(Gimgp)
-%     title('Gimgp')
-%     drawnow;
- end
-    %Gimg = Gimg.*(Gimg > 0);
-    
-for n=1:N
+        N = size(data,1);
+
+        particle(1:N) = struct('id',0,'x',0,'y',0,'r',0,'rm',0,'color','','fsigma',0,'z',0,'f',0,'g2',0,'forces',[],'betas',[],'alphas',[],'neighbours',[],'contactG2s',[],'forceImage',[], 'nonContact', [], 'contactPos', [], 'contactInt', [], 'edge', 0);
+        for n = 1:N %Bookkeeping from centers-tracked
+            particle(n).id= pData(data(n),2);
+            particle(n).x = pData(data(n),3); 
+            particle(n).y = pData(data(n),4); 
+            particle(n).r = round(pData(data(n),5));
+            particle(n).edge = pData(data(n), 6);
+            particle(n).rm = particle(n).r*pxPerMeter;
+            particle(n).fsigma = fsigma;
+        end   
+        
+        
+        for n=1:N %loop over particles
     
     %create a circular mask
-    % => Find a better way yo do this masking!
-
-    r = particle(n).r*1.0;
-    if round(particle(n).y+r)<size(Gimg, 1)&&round(particle(n).x+r)<size(Gimg,2)&&round(particle(n).y-r)>1&&round(particle(n).x-r)>1
-
-        mask = abs(-r:r);
-        mask = mask.^2 + mask.^2';
-        mask1 = (sqrt(mask) <= r);
-
-        %This crops out a particle
-        cropXstart = round(particle(n).x-r);
-        cropXstop = round(particle(n).x-r)+ size(mask1,1)-1;
-        cropYstart = round(particle(n).y-r);
-        cropYstop = round(particle(n).y-r)+ size(mask1,2)-1;
-        cimg = im2double(Gimgd(cropYstart:cropYstop, cropXstart:cropXstop));
-        %imshow(cimg)
-        particleImg = cimg.*mask1;
-        %imshow(particleImg)
-        particle(n).forceImage=particleImg;
-
-        %create a circular mask with a radius that is one pixel smaller
-        %for cropping out the relevant gradient
-
-        mask2 = double(sqrt(mask) <= r-1);
-
-        %Compute G^2 for each particle
-        [gx,gy] = gradient(particleImg);
-        g2 = (gx.^2 + gy.^2).*mask2;
-        particle(n).g2 = sum(sum(g2));
-        particle(n).f = particle(n).g2/g2cal;
-    else
-        error('badimage!!')
-        
-    end
-end
-
-
-
-Gimgfine = Gimgp;
-
-% imshow(Gimgfine)
-
- 
-xmat = zeros([N,1]);
-ymat = zeros([N,1]); % Preallocation
-rmat = zeros([N,1]);
-Gimgfine = imadjust(Gimgp, fineimadjust_limits);
-% figure;
-%    imshow(Gimgfine)
-for l = 1:N
-    
-    xmat(l) = particle(l).x;
-    ymat(l) = particle(l).y; %Pulls data from particle structure
-    rmat(l) = particle(l).r;
-    
-
-end
-
-%histogram(rmat)
-rmats = rmat; %Saves our radius matrix for later
-
-dmat = pdist2([xmat,ymat],[xmat,ymat]); %Creates a distance matrix for particle center locations
-rmat = rmat + rmat'; %Makes a combination of radii for each particle
-
-friendmat = dmat < (rmat + dtol) & dmat~=0; %Logical "friend" matrix
-
-friendmat = triu(friendmat); %Only examine the upper triangle portion (no repeats)
-[f1, f2] = find(friendmat == 1); %Creates an index of particles that are considered touching
-%% 
-
-
-
-
-mask = abs(-CR:CR);
-mask = mask.^2 + mask.^2';
-mask = double(sqrt(mask) <= CR-1);
-%% 
-
-for l = 1:length(f1)
-    %if f1(l) == particleNumber1 & f2(l) == particleNumber2
-    x1 = particle(f1(l)).x;
-    y1 = particle(f1(l)).y;
-    r1 = particle(f1(l)).r;
-    x2 = particle(f2(l)).x;
-    y2 = particle(f2(l)).y;
-    r2 = particle(f2(l)).r;
-    %if uint16(y1+r1+padding)<size(Gimg, 1)&uint16(x1+r1+padding)<size(Gimg,2)&uint16(y1-r1-padding)>1&uint16(x1-r1-padding)>1&uint16(y2+r2+padding)<size(Gimg, 1)&uint16(x2+r2+padding)<size(Gimg,2)&uint16(y2-r2-padding)>1&uint16(x2-r2-padding)>1
-    
-    
-    
-    contactXp1 = round(x1 + (r1-1 - CR) * cos(atan2(y2-y1,x2-x1)));
-    contactYp1 = round(y1 + (r1 -1- CR) * sin(atan2(y2-y1,x2-x1)));
-    
-    contactXp2 = round(x1 + (r1-1 + CR + dmat(f1(l),f2(l)) - rmat(f1(l),f2(l))) * cos(atan2(y2-y1,x2-x1))); %%note to carm, we might want to filter by general g2 first
-    contactYp2 = round(y1 + (r1-1 + CR + dmat(f1(l),f2(l)) - rmat(f1(l),f2(l))) * sin(atan2(y2-y1,x2-x1)));
-    contactImg = im2double(imcrop(Gimgd,[contactXp1-CR contactYp1-CR CR*2 CR*2]));
-    
-    contactImg = contactImg.*mask;
-    
-    [gx,gy] = gradient(contactImg);
-    g2 = (gx.^2 + gy.^2);
-    contactG2p1 = sum(sum(g2));
-    contactIp1 = sum(sum(contactImg));
-    
-    contactImg = im2double(imcrop(Gimgd,[contactXp2-CR contactYp2-CR CR*2 CR*2]));
-%     if l==2107
-%         n
-%         imshow(contactImg)
-%         figure
-%         imshow(mask)
-%         drawnow;
-%         n
-%     end
-%     l
-    contactImg = contactImg.*mask;
-    contactG2p2 = gradientcalculator(contactImg);
-    
-    contactIp2 = sum(sum(contactImg));
-
-
-
-    
-    %[m1,n1,l1] = size(contactG2p1)
-    %[m2,n2,l2] = size(contactG2p2)
-    %if we declare our contact valid
-%      viscircles(ax1, [contactXp1; contactYp1]', CR,'EdgeColor','w');           
-%      viscircles(ax1,[contactXp2; contactYp2]', CR,'EdgeColor','w');
-%      text(ax1,contactXp1, contactYp1,num2str(contactG2p1),'Color','r');
-%      text(ax1, contactXp2, contactYp2,num2str(contactG2p2),'Color','r');
-    if(contactG2p1 > contactG2Threshold && contactG2p2 > contactG2Threshold)
-        
-        %Plot contact area
-       
-        %this is a valid contact, remember it
-        particle(f1(l)).z= particle(f1(l)).z +1; %increase coordination number
-        particle(f1(l)).contactG2s(particle(f1(l)).z)=contactG2p1; %remember the g2 value of the current contact area
-        particle(f1(l)).contactIs(particle(f1(l)).z)=contactIp1; %changes to color
-        particle(f1(l)).color(particle(f1(l)).z)='r'; %changes to color
-        particle(f1(l)).neighbours(particle(f1(l)).z) = particle(f2(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
-        particle(f1(l)).betas(particle(f1(l)).z) = atan2(y2-y1,x2-x1); %the contact angle to particle m is now noted in the particle l datastructure
-        particle(f2(l)).z= particle(f2(l)).z +1; %increase coordination number
-        particle(f2(l)).contactG2s(particle(f2(l)).z)=contactG2p2; %remember the g2 value of the current contact area
-        particle(f2(l)).contactIs(particle(f2(l)).z)=contactIp2;
-        particle(f2(l)).color(particle(f2(l)).z)='r'; %changes to color
-        particle(f2(l)).neighbours(particle(f2(l)).z) = particle(f1(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
-        particle(f2(l)).betas(particle(f2(l)).z) = atan2(y1-y2,x1-x2);
   
-    else %we try the more refined method of contact detection
-        
-        contactImg = im2double(imcrop(Gimgfine,[contactXp1-CR contactYp1-CR CR*2 CR*2]));
-    
-        contactImg = contactImg.*mask;
-        contactG2p1=gradientcalculator(contactImg);
-        
-        contactIp1 = sum(sum(contactImg));
+        r = particle(n).r;
+        if round(particle(n).y+r)<size(Gimg, 1)&&round(particle(n).x+r)<size(Gimg,2)&&round(particle(n).y-r)>1&&round(particle(n).x-r)>1 %double check to make sure the bounds are within the image
 
-        contactImg = im2double(imcrop(Gimgfine,[contactXp2-CR contactYp2-CR CR*2 CR*2]));
-        contactImg = contactImg.*mask;
-        contactG2p2 = gradientcalculator(contactImg);
+            mask = abs(-r:r);
+            mask = mask.^2 + mask.^2';
+            mask1 = (sqrt(mask) <= r);
+
+            %This crops out a particle
+            cropXstart = round(particle(n).x-r);
+            cropXstop = round(particle(n).x-r)+ size(mask1,1)-1;
+            cropYstart = round(particle(n).y-r);
+            cropYstop = round(particle(n).y-r)+ size(mask1,2)-1;
+            
+
+            particleImg= Gimgd(cropYstart:cropYstop, cropXstart:cropXstop).*mask1;
+            particle(n).forceImage=particleImg; %save this so we can fit to this image later in diskSolve
+
+            %create a circular mask with a radius that is one pixel smaller
+            %for cropping out the relevant gradient
+
+            mask2 = double(sqrt(mask) <= r-1);
+
+            %Compute G^2 for each particle
+            [gx,gy] = gradient(particleImg);
+            g2 = (gx.^2 + gy.^2).*mask2;
+            particle(n).g2 = sum(sum(g2));
+            particle(n).f = particle(n).g2/g2cal; %saving some particle scale features
+        else
+            error('badimage!!')
         
-        contactIp2 = sum(sum(contactImg));
-%         text(ax1,contactXp1, contactYp1+10,num2str(contactG2p1),'Color','b');
-%         text(ax1, contactXp2, contactYp2+10,num2str(contactG2p2),'Color','b');
-%         if contactG2p1> contactG2Threshold && contactG2p2 > contactG2Threshold
-%             particle(f1(l)).z= particle(f1(l)).z +1; %increase coordination number
-%             particle(f1(l)).contactG2s(particle(f1(l)).z)=contactG2p1; %remember the g2 value of the current contact area
-%             particle(f1(l)).contactIs(particle(f1(l)).z)=contactIp1; %changes to color
-%             particle(f1(l)).color(particle(f1(l)).z)='w'; %changes to color
-%             particle(f1(l)).neighbours(particle(f1(l)).z) = particle(f2(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
-%             particle(f1(l)).betas(particle(f1(l)).z) = atan2(y2-y1,x2-x1); %the contact angle to particle m is now noted in the particle l datastructure
-%             particle(f2(l)).z= particle(f2(l)).z +1; %increase coordination number
-%             particle(f2(l)).contactG2s(particle(f2(l)).z)=contactG2p2; %remember the g2 value of the current contact area
-%             particle(f2(l)).contactIs(particle(f2(l)).z)=contactIp2;
-%             particle(f2(l)).color(particle(f2(l)).z)='w'; %changes to color
-%             particle(f2(l)).neighbours(particle(f2(l)).z) = particle(f1(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
-%             particle(f2(l)).betas(particle(f2(l)).z) = atan2(y1-y2,x1-x2);
-%         else
+        end
+    end
+%%
+
+    xmat = pData(data,3);
+    ymat = pData(data,4);
+    rmat = round(pData(data,5));
+
+    rmats = rmat; %Saves our radius matrix for later
+
+    dmat = pdist2([xmat,ymat],[xmat,ymat]); %Creates a distance matrix for particle center locations
+    rmat = rmat + rmat'; %Makes a combination of radii for each particle
+
+    friendmat = dmat < (rmat + dtol) & dmat~=0; %Logical "friend" matrix
+
+    friendmat = triu(friendmat); %Only examine the upper triangle portion (no repeats)
+    [f1, f2] = find(friendmat == 1); %Creates an index of particles that are considered touching
+%% 
+    xpairs = [xmat(f1),xmat(f2)];
+    ypairs = [ymat(f1),ymat(f2)];
+    rpairs = [rmat(f1),rmat(f2)];
+  
+%% loop over friends
+    
+    for l = 1:length(f1)
+        
+        x = xpairs(l,:);
+        y = ypairs(l,:);
+        r = rpairs(l,:);
+        [contactG2p, contactIp] = contactspot(x,y,r, CR, Gimgd, maskCR);
+   
+        if(contactG2p(1) > contactG2Threshold && contactG2p(2) > contactG2Threshold)
+        
+            %this is a valid contact, remember it
+            particle(f1(l)).z= particle(f1(l)).z +1; %increase coordination number
+            particle(f1(l)).contactG2s(particle(f1(l)).z)=contactG2p(1); %remember the g2 value of the current contact area
+            particle(f1(l)).contactIs(particle(f1(l)).z)=contactIp(1); %changes to color
+            particle(f1(l)).color(particle(f1(l)).z)='r'; %changes to color
+            particle(f1(l)).neighbours(particle(f1(l)).z) = particle(f2(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
+            particle(f1(l)).betas(particle(f1(l)).z) = atan2(y(2)-y(1),x(2)-x(1)); %the contact angle to particle m is now noted in the particle l datastructure
+            particle(f2(l)).z= particle(f2(l)).z+1; %increase coordination number
+            particle(f2(l)).contactG2s(particle(f2(l)).z)=contactG2p(2); %remember the g2 value of the current contact area
+            particle(f2(l)).contactIs(particle(f2(l)).z)=contactIp(2);
+            particle(f2(l)).color(particle(f2(l)).z)='r'; %changes to color
+            particle(f2(l)).neighbours(particle(f2(l)).z) = particle(f1(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
+            particle(f2(l)).betas(particle(f2(l)).z) = atan2(y(1)-y(2),x(1)-x(2));
+  
+        else %we try the more refined method of contact detection
+            [contactG2p, contactIp] = contactspot(x,y,r, CR, Gimgfine, maskCR);
+        
+
 
         croppedImg = (Gimgfine(uint16(y1-r1-padding):uint16(y1+r1+padding),uint16(x1-r1-padding):uint16(x1+r1+padding)));
         %croppedImg = im2uint8(croppedImg);
@@ -1142,32 +991,7 @@ for n=1:N
         end
         
 
-%         elseif particle(n).z ==1 && particle(n).contactIs <4 && particle(n).edge ==0
-%             y1 = particle(n).y;
-%             x1 = particle(n).x;
-%             r1 = particle(n).r;
-%         
-%              croppedImg = (Gimgfine(uint16(y1-r1-padding):uint16(y1+r1+padding),uint16(x1-r1-padding):uint16(x1+r1+padding)));
-%              figure1 = figure;
-% 
-%              subplot(2,1,1, 'Parent', figure1)
-%              imshow(Gimgfine(uint16(y1-r1-50):uint16(y1+r1+50),uint16(x1-r1-50):uint16(x1+r1+50)));
-% 
-%              hold on;
-%              plot(r1*cos(particle(n).betas(1))+50+r1,50+r1+r1*sin(particle(n).betas(1)), 'o');
-%              title(num2str(particle(n).id))
-%              subplot(2,1,2, 'Parent', figure1)
-%         profile = contactfind(croppedImg, x1, y1, r1, n, verbose);
-%         newlocs = particle(n).contactPos;
-%         newpks = particle(n).contactInt;
-%         
-%         plot(profile(:,1), profile(:,2));
-%         hold on;
-%         plot(newlocs, newpks, 'o');
-%         
-%         angle = ismembertol(newlocs, particle(n).betas(1), 0.25);
-%         newneigh = find(angle==0);
-%         drawnow
+
     if ~isempty(pop)
     index = particle(n).nonContact(nonzeros(pop)); %check if n also is inside of the neighbour particles non-Contact
     for t=1:length(index)
@@ -1184,45 +1008,66 @@ for n=1:N
 end
 end
    
-if verbose
-h3 = figure(20);
-hAx1 = subplot(1,1,1,'Parent', h3);
-imshow(Gimgfine, 'Parent', hAx1);
-hold (hAx1, 'on');
-    for n = 1:length(particle)
-        particle(n).id
-        %viscircles([particle(n).x, particle(n).y], particle(n).r, 'EdgeColor', particle(n).color);
-        z = particle(n).z; %get particle coordination number
-        if (z>0) %if the particle does have contacts
-            for m = 1:z %for each contact
-                %draw contact lines
-                lineX(1)=particle(n).x;
-                lineY(1)=particle(n).y;
-                lineX(2) = lineX(1) + particle(n).r * cos(particle(n).betas(m));
-                lineY(2) = lineY(1) + particle(n).r * sin(particle(n).betas(m));
-%                 cX = lineX(1) + (particle(n).r-CR) * cos(particle(n).betas(m));
-%                 cY = lineY(1) + (particle(n).r-CR) * sin(particle(n).betas(m));
-                plot(hAx1, lineX, lineY,particle(n).color(m),'LineWidth',2);
-                %text(hAx1,lineX(1),lineY(1),num2str(n),'Color','r')
+    
+    [num2str(sum([particle.z])), ' contacts detected'   ]
+    save([directory, files(imgnumb).name(1:end-4),'_preprocessing.mat'],'particle')
+    end
+
+
+    if verbose
+        h3 = figure(20);
+        hAx1 = subplot(1,1,1,'Parent', h3);
+        imshow(Gimgfine, 'Parent', hAx1);
+        hold (hAx1, 'on');
+        for n = 1:length(particle)
+            particle(n).id
+            z = particle(n).z; %get particle coordination number
+            if (z>0) %if the particle does have contacts
+                for m = 1:z %for each contact
+                    %draw contact lines
+                    lineX(1)=particle(n).x;
+                    lineY(1)=particle(n).y;
+                    lineX(2) = lineX(1) + particle(n).r * cos(particle(n).betas(m));
+                    lineY(2) = lineY(1) + particle(n).r * sin(particle(n).betas(m));
+                    plot(hAx1, lineX, lineY,particle(n).color(m),'LineWidth',2);
+                    
+                end
             end
+            text(hAx1, particle(n).x, particle(n).y, num2str(n), 'Color', 'r')
         end
-        text(hAx1, particle(n).x, particle(n).y, num2str(n), 'Color', 'r')
+        drawnow;
     end
-drawnow;
-end
-[num2str(sum([particle.z])), 'detected'   ]
-save([directory, files(imgnumb).name(1:end-4),'_preprocessing.mat'],'particle')
-    end
-   
+
 end
 
+
+
+
+%extra helper functions
 function contactG2 = gradientcalculator(imgchunk)
     [gx,gy] = gradient(imgchunk);
     g2 = (gx.^2 + gy.^2);
     contactG2 = sum(sum(g2));
-% contactIntensities = nonzeros(contactIntensities);
-% figure;
-% histogram(contactIntensities,100);
-% figure;
-% contactnumbers = [particle.z];
-% histogram(contactnumbers)
+end
+
+function [contactG2p contactIp]=contactspot(x, y, r, CR, Gimgd, maskCR)
+    contactangle = [atan2(y(2)-y(1),x(2)-x(1)), atan2(y(1)-y(2), x(1)-x(2))];
+    contactXp = round(x + (r -  1 - CR).* cos(contactangle));
+    contactYp = round(y + (r -1- CR).* sin(contactangle));
+    
+    contactImg = im2double(imcrop(Gimgd,[contactXp(1)-CR contactYp(1)-CR CR*2 CR*2]));
+    contactImg = contactImg.*maskCR;
+    
+    contactG2p = [gradientcalculator(contactImg)];
+    contactIp = [sum(sum(contactImg))];
+    
+    contactImg = im2double(imcrop(Gimgd,[contactXp(2)-CR contactYp(2)-CR CR*2 CR*2]));
+    contactImg = contactImg.*maskCR;
+    contactG2p(2,:)= gradientcalculator(contactImg);
+    contactIp(2,:) = sum(sum(contactImg));
+    %contactG2p = [G1 G2]
+    
+    
+end
+% function calibrateparameters()
+
