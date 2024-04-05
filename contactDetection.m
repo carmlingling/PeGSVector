@@ -14,15 +14,16 @@ boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
 radiusRange = [40, 57];
 %radiusRange = [45, 78]; %airtable
 
-verbose = false;
+verbose = true;
 % % % % % % % % % 
 
 %% calibrating values
 calibrate = false;
- particleNumber1 = 1566;
- particleNumber2 = 1639;
+global particleNumber1 particleNumber2
+particleNumber1 = 269;
+particleNumber2 = 1247;
 
-  
+warning('off','signal:findpeaks:largeMinPeakHeight')
 
 %% thresholding limits
 if boundaryType == "airtable"
@@ -49,7 +50,7 @@ elseif boundaryType == "annulus"
     fsigma = 141; %photoelastic stress coefficient
     g2cal = 145; %Calibration Value for the g^2 method, can be computed by joG2cal.m
     dtol = 30; % How far away can the outlines of 2 particles be to still be considered Neighbours
-    contactG2Threshold = 1; %sum of g2 in a contact area larger than this determines a valid contact
+    contactG2Threshold = 0.5; %sum of g2 in a contact area larger than this determines a valid contact
     CR = 15; 
     imadjust_limits = [0, 0.6];
     fineimadjust_limits = [0/255, 30/255];%[13/255, 39/255]
@@ -104,7 +105,7 @@ for imgnumb = 1:1
             imshow(Gimgp)
             viscircles([pData(data,3), pData(data,4)], round(pData(data,5)))
             title('Gimgp')
-            Gimgp = imadjust(Gimgp,[0,0.6]);
+           
         end
 
     elseif boundaryType == "annulus"
@@ -141,8 +142,7 @@ for imgnumb = 1:1
     
     frame = str2double(files(imgnumb).name(frameidind:frameidind+3))
     
-    data = find(pData(:,1) == frame);%from the centers information, find the particles that are in a the
-    %current frame
+    data = find(pData(:,1) == frame);%from the centers information, find the particles that are in a the current frame
     
     if ~isempty(data)
 
@@ -164,396 +164,147 @@ for imgnumb = 1:1
     
     %create a circular mask
   
-        r = particle(n).r;
-        if round(particle(n).y+r)<size(Gimg, 1)&&round(particle(n).x+r)<size(Gimg,2)&&round(particle(n).y-r)>1&&round(particle(n).x-r)>1 %double check to make sure the bounds are within the image
+            r = particle(n).r;
+            if round(particle(n).y+r)<size(Gimg, 1)&&round(particle(n).x+r)<size(Gimg,2)&&round(particle(n).y-r)>1&&round(particle(n).x-r)>1 %double check to make sure the bounds are within the image
 
-            mask = abs(-r:r);
-            mask = mask.^2 + mask.^2';
-            mask1 = (sqrt(mask) <= r);
+                mask = abs(-r:r);
+                mask = mask.^2 + mask.^2';
+                mask1 = (sqrt(mask) <= r);
 
-            %This crops out a particle
-            cropXstart = round(particle(n).x-r);
-            cropXstop = round(particle(n).x-r)+ size(mask1,1)-1;
-            cropYstart = round(particle(n).y-r);
-            cropYstop = round(particle(n).y-r)+ size(mask1,2)-1;
-            
+                %This crops out a particle
+                cropXstart = round(particle(n).x-r);
+                cropXstop = round(particle(n).x-r)+ size(mask1,1)-1;
+                cropYstart = round(particle(n).y-r);
+                cropYstop = round(particle(n).y-r)+ size(mask1,2)-1;
 
-            particleImg= Gimgd(cropYstart:cropYstop, cropXstart:cropXstop).*mask1;
-            particle(n).forceImage=particleImg; %save this so we can fit to this image later in diskSolve
 
-            %create a circular mask with a radius that is one pixel smaller
-            %for cropping out the relevant gradient
+                particleImg= Gimgd(cropYstart:cropYstop, cropXstart:cropXstop).*mask1;
+                particle(n).forceImage=particleImg; %save this so we can fit to this image later in diskSolve
 
-            mask2 = double(sqrt(mask) <= r-1);
+                %create a circular mask with a radius that is one pixel smaller
+                %for cropping out the relevant gradient
 
-            %Compute G^2 for each particle
-            [gx,gy] = gradient(particleImg);
-            g2 = (gx.^2 + gy.^2).*mask2;
-            particle(n).g2 = sum(sum(g2));
-            particle(n).f = particle(n).g2/g2cal; %saving some particle scale features
-        else
-            error('badimage!!')
-        
+                mask2 = double(sqrt(mask) <= r-1);
+
+                %Compute G^2 for each particle
+                [gx,gy] = gradient(particleImg);
+                g2 = (gx.^2 + gy.^2).*mask2;
+                particle(n).g2 = sum(sum(g2));
+                particle(n).f = particle(n).g2/g2cal; %saving some particle scale features
+            else
+                error('badimage!!')
+
+            end
         end
-    end
-%%
+%% look at neighbours
 
-    xmat = pData(data,3);
-    ymat = pData(data,4);
-    rmat = round(pData(data,5));
-
-    rmats = rmat; %Saves our radius matrix for later
-
-    dmat = pdist2([xmat,ymat],[xmat,ymat]); %Creates a distance matrix for particle center locations
-    rmat = rmat + rmat'; %Makes a combination of radii for each particle
-
-    friendmat = dmat < (rmat + dtol) & dmat~=0; %Logical "friend" matrix
-
-    friendmat = triu(friendmat); %Only examine the upper triangle portion (no repeats)
-    [f1, f2] = find(friendmat == 1); %Creates an index of particles that are considered touching
+        xmat = pData(data,3);
+        ymat = pData(data,4);
+        rmat = pData(data,5);
+        
+        rmats = rmat; %Saves our radius matrix for later
+        
+        dmat = pdist2([xmat,ymat],[xmat,ymat]); %Creates a distance matrix for particle center locations
+        rmat = rmat + rmat'; %Makes a combination of radii for each particle
+        
+        friendmat = dmat < (rmat + dtol) & dmat~=0; %Logical "friend" matrix
+        
+        friendmat = triu(friendmat); %Only examine the upper triangle portion (no repeats)
+        [f1, f2] = find(friendmat == 1); %Creates an index of particles that are considered touching
 %% 
-    xpairs = [xmat(f1),xmat(f2)];
-    ypairs = [ymat(f1),ymat(f2)];
-    rpairs = [rmat(f1),rmat(f2)];
-  
+        xpairs = [xmat(f1),xmat(f2)];
+        ypairs = [ymat(f1),ymat(f2)];
+        rpairs = [rmats(f1),rmats(f2)];
+      
 %% loop over friends
     
-    for l = 1:length(f1)
+        for l = 1:length(f1)
+            
+            x = xpairs(l,:);
+            y = ypairs(l,:);
+            r = rpairs(l,:);
+            [contactG2p, contactIp] = contactspot(x,y,r, CR, Gimgd, maskCR);
+            
+            if(contactG2p(1) > contactG2Threshold && contactG2p(2) > contactG2Threshold)
         
-        x = xpairs(l,:);
-        y = ypairs(l,:);
-        r = rpairs(l,:);
-        [contactG2p, contactIp] = contactspot(x,y,r, CR, Gimgd, maskCR);
-   
-        if(contactG2p(1) > contactG2Threshold && contactG2p(2) > contactG2Threshold)
-        
-            %this is a valid contact, remember it
-            particle(f1(l)).z= particle(f1(l)).z +1; %increase coordination number
-            particle(f1(l)).contactG2s(particle(f1(l)).z)=contactG2p(1); %remember the g2 value of the current contact area
-            particle(f1(l)).contactIs(particle(f1(l)).z)=contactIp(1); %changes to color
-            particle(f1(l)).color(particle(f1(l)).z)='r'; %changes to color
-            particle(f1(l)).neighbours(particle(f1(l)).z) = particle(f2(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
-            particle(f1(l)).betas(particle(f1(l)).z) = atan2(y(2)-y(1),x(2)-x(1)); %the contact angle to particle m is now noted in the particle l datastructure
-            particle(f2(l)).z= particle(f2(l)).z+1; %increase coordination number
-            particle(f2(l)).contactG2s(particle(f2(l)).z)=contactG2p(2); %remember the g2 value of the current contact area
-            particle(f2(l)).contactIs(particle(f2(l)).z)=contactIp(2);
-            particle(f2(l)).color(particle(f2(l)).z)='r'; %changes to color
-            particle(f2(l)).neighbours(particle(f2(l)).z) = particle(f1(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
-            particle(f2(l)).betas(particle(f2(l)).z) = atan2(y(1)-y(2),x(1)-x(2));
+                %this is a valid contact, remember it
+                particle(f1(l)).z= particle(f1(l)).z +1; %increase coordination number
+                particle(f1(l)).contactG2s(particle(f1(l)).z)=contactG2p(1); %remember the g2 value of the current contact area
+                particle(f1(l)).contactIs(particle(f1(l)).z)=contactIp(1); %changes to color
+                particle(f1(l)).color(particle(f1(l)).z)='r'; %changes to color
+                particle(f1(l)).neighbours(particle(f1(l)).z) = particle(f2(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
+                particle(f1(l)).betas(particle(f1(l)).z) = atan2(y(2)-y(1),x(2)-x(1)); %the contact angle to particle m is now noted in the particle l datastructure
+                particle(f2(l)).z= particle(f2(l)).z+1; %increase coordination number
+                particle(f2(l)).contactG2s(particle(f2(l)).z)=contactG2p(2); %remember the g2 value of the current contact area
+                particle(f2(l)).contactIs(particle(f2(l)).z)=contactIp(2);
+                particle(f2(l)).color(particle(f2(l)).z)='r'; %changes to color
+                particle(f2(l)).neighbours(particle(f2(l)).z) = particle(f1(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
+                particle(f2(l)).betas(particle(f2(l)).z) = atan2(y(1)-y(2),x(1)-x(2));
   
-        else %we try the more refined method of contact detection
-            [contactG2p, contactIp] = contactspot(x,y,r, CR, Gimgfine, maskCR);
-        
-
-
-        croppedImg = (Gimgfine(uint16(y1-r1-padding):uint16(y1+r1+padding),uint16(x1-r1-padding):uint16(x1+r1+padding)));
-        %croppedImg = im2uint8(croppedImg);
-        %croppedImg = imadjust(croppedImg, [0.2, 175/255]);
-        
-        %croppedImg = imadjust(croppedImg, [0, 0.15]);
-        [profile] = contactfind(croppedImg, x1, y1, r1-1, f1(l), verbose);
-        
-        if any(profile(:,1)>minpeakheight)
-        [pkints, locints] = findpeaks(profile(:,2),profile(:,1), "MinPeakHeight", minpeakheight,'MinPeakProminence', minpeakprominence, 'MaxPeakWidth', pi);
-        else
-            pkints = [];
-            locints = [];
-        end
-        [pks,locs] =findpeaks(profile(:,2), profile(:,1),'MinPeakProminence',minpeakprom_main,'MaxPeakWidth', pi);
-        pks = [pks;pkints];
-        locs = [locs;locints];
-        inds = find(locs>(pi));
-        locs(inds) = locs(inds)-2*pi;
-        
-        croppedImg2 = (Gimgfine(uint32(y2-r2-padding):uint32(y2+r2+padding),uint32(x2-r2-padding):uint32(x2+r2+padding)));
-        [profile2] = contactfind(croppedImg2, x2, y2, r2-1, f2(l), verbose);
-
-
-        [pks2,locs2] =findpeaks(profile2(:,2), profile2(:,1),'MinPeakProminence',minpeakprom_main,'MaxPeakWidth', pi);
-        if any(profile2(:,1)>minpeakheight)
-            [pkints2, locints2] = findpeaks(profile2(:,2),profile2(:,1), "MinPeakHeight", minpeakheight,'MinPeakProminence', 0.02, 'MaxPeakWidth', pi);
-        else
-            pkints2 = [];
-            locints2 = [];
-        end
-        pks2 = [pks2;pkints2];
-        locs2 = [locs2;locints2];
-        inds2 = find(locs2>(pi));
-        locs2(inds2) = locs2(inds2)-2*pi;
-        
-
-        
-    %%Merging peaks that are probably too close together
+            else %we try the more refined method of contact detection
+       
+            %find peaks in intensity for each particle, record the value of
+            %the peak and the angular location relative to the x axis of
+            %each particle
+            [pks, locs] = peakfinder(x(1), y(1), r(1), f1(l), Gimgfine, minpeakheight, minpeakprominence, minpeakprom_main, padding);
+            [pks2, locs2] = peakfinder(x(2), y(2), r(2), f2(l), Gimgfine, minpeakheight, minpeakprominence, minpeakprom_main, padding);
     
-    
-        newlocs = [];
-        newpks = [];
-        len =1;
+            %compare the locations to whatever the nominal angle is (center
+            %to center)
+            
+            nominalAngle = atan2(y(2)-y(1), x(2)-x(1));
+            nominalAngleEXP = [nominalAngle-2*pi, nominalAngle, nominalAngle+2*pi];
+
+            [angle] = ismembertol(nominalAngleEXP,locs',  pi/6,'DataScale', 1);
+
+            nominalAngle2 = atan2(y(1)-y(2), x(1)-x(2));
+            nominalAngleEXP = [nominalAngle2-2*pi, nominalAngle2, nominalAngle2+2*pi];
+
+            [angle2] = ismembertol(nominalAngleEXP,locs2',  pi/6,'DataScale', 1);
         
-
-        while len <= length(locs)
-            matching = find((locs > locs(len)-pi/6) & (locs< locs(len)+pi/6));
-            if length(matching) >= 2
-                if matching(1)==len
-                newlocs = [newlocs,(locs(matching(1))+locs(matching(2)))/2];
-                newpks = [newpks,pks(matching(1))];
-                end
-             elseif length(matching) ==1
-               
-               newlocs = [newlocs,locs(matching(1))];
-               newpks = [newpks,pks(matching(1))];
-             end
-             len = len+1;
-        end
-        newlocs = newlocs';
-
-        newlocs2 = [];
-        newpks2 = [];
-        len =1;
-        while len <= length(locs2)
-            matching2 = find((locs2 > locs2(len)-pi/6) & (locs2< locs2(len)+pi/6));
-            if length(matching2) >= 2
-             if matching2(1)==len
-        
-                newlocs2 = [newlocs2,(locs2(matching2(1))+locs2(matching2(2)))/2];
-                  
-                newpks2 = [newpks2,pks2(matching2(1))];
-             elseif pks2(matching2(1)-pks2(matching2(2) < 0.001))
-                 newlocs2 = [newlocs2,locs2(matching2(1))];
-             end
-             elseif length(matching2) ==1
-%                if locs2(matching2(1)) > 0
-%                newlocs2(matching2(1)) = locs2(matching2(1));
-%                else
-%                    newlocs2(matching2(1)) = locs2(matching2(1));
-%                end
-                newlocs2 = [newlocs2,locs2(matching2(1))];
-               newpks2 = [newpks2,pks2(matching2(1))];
-            end
-            len = len+1;
-        end
-        
-        
-        newlocs2 = (newlocs2)';
-        
-        invnewlocs2 = zeros(size(newlocs2));
-        for angle=1:length(newlocs2)
-            if newlocs2(angle)>0
-                invnewlocs2(angle) = newlocs2(angle)-pi;
-            elseif newlocs2(angle)<0
-                invnewlocs2(angle) = newlocs2(angle)+pi;
-            else
-                invnewlocs2(angle) = newlocs2(angle);
-            end
-        end
-        nominalAngle = atan2(y2-y1, x2-x1);
-        if ismember(1,ismembertol([-pi, pi], nominalAngle, 0.2))
-            
-            if nominalAngle<0
-                nominalAngle = [nominalAngle, nominalAngle+2*pi];
-            else
-                nominalAngle = [nominalAngle, nominalAngle-2*pi];
-            end
-        end
-        angle = ismembertol(newlocs, nominalAngle, 0.25);
-        angle2 = ismembertol(invnewlocs2, nominalAngle, 0.25);
-        
-
-        nominalAngle = atan2(y2-y1, x2-x1);
-         if ismember(1, angle) && ismember(1, angle2)
-
-            if x1 > x2
-                xcoords = [x2,x1];
-            else
-                xcoords = [x1,x2];
-            end
-            if y1 > y2
-                ycoords = [y2,y1];
-            else
-                ycoords = [y1,y2];
-            end
-            
-            if nominalAngle>0 && nominalAngle <pi/2
-                rotAngle = -(pi/2-nominalAngle);
-            elseif nominalAngle>pi/2 && nominalAngle < pi
-                rotAngle = -(pi/2-nominalAngle);
-            elseif nominalAngle<0 && nominalAngle >-pi/2
-                rotAngle = pi/2+nominalAngle;
-            elseif nominalAngle<-pi/2 && nominalAngle > -pi
-                rotAngle = nominalAngle + pi/2;
-            end
-            
-
-
-            rotatedImage = imrotate(Gimgfine(uint16(ycoords(1)-r1):uint16(ycoords(2)+r1),uint16(xcoords(1)-r1):uint16(xcoords(2)+r1)), rotAngle*180/pi);
-            
-            
-            
-            rotimgsize = size(rotatedImage);
-            subImage = rotatedImage(uint16(rotimgsize(1)*2/5):uint16(rotimgsize(1)/5)*3, uint16(rotimgsize(2)*2/5):uint16(rotimgsize(2)*3/5));
-            intProfile = mean(subImage, 2);
-            
-            
-            
-%           
-%             if any(intProfile(:,1)>0.15)
-%                 [peaks, loc] = findpeaks(profile2(:,2),profile2(:,1), "MinPeakHeight",0.15,'MinPeakProminence', 0.05, 'MaxPeakWidth', pi);
-%             else
-%                 peaks = [];
-%                 loc = [];
-%             end
-            [peaks, loc] = findpeaks(intProfile, 'MinPeakHeight',0.15, 'MinPeakProminence', 0.05);
-            
-            [gmag, gdir] = imgradient((subImage));
-            dirProfile = mean(gmag, 2);
-            
-
-            if verbose
-            if f1(l) ==particleNumber1 && f2(l) ==particleNumber2
-            figurerot = figure;
-            axes1 = subplot(1,6, 1, 'Parent', figurerot);
-            axes2 =subplot(1,6, 2, 'Parent', figurerot);
-            axes3 =subplot(1,6, 3, 'Parent', figurerot);
-            axes4 =subplot(1,6, 4, 'Parent', figurerot);
-            
-            imshow(Gimgfine(ycoords(1)-r1:ycoords(2)+r1,xcoords(1)-r1:xcoords(2)+r1), 'Parent', axes1)
-            hold on;
-            title(axes1,num2str(nominalAngle))
-            imshow(rotatedImage, 'Parent', axes2);
-            title(num2str(rotAngle), 'Parent', axes2)
-            imshow(subImage, 'Parent', axes3);
-            plot(axes4,intProfile); hold on;
-            plot(axes4,loc, peaks, 'o');
-
-            
-            axes5 =subplot(1,6, 5, 'Parent', figurerot);
-
-            imshow(uint8(gmag), 'Parent', axes5);
-            
-            axes6 =subplot(1,6, 6, 'Parent', figurerot);
-            
-            plot(axes6, dirProfile)
-            end
-            
-            end
-            if length(peaks) >=2 
-                if any(intProfile(loc(1):loc(2))<0.001)
-                    valid = true;
-                    'a';
-                else 
-                    valid =true;
-                    'b';
-                end
-            elseif length(peaks) ==1
-                if any(dirProfile>0.1)
-                    valid = true;
-                    'c';
-                else 
-                    valid = false ;
-                    'd';
-                end
-            else
-                valid = false;
-                'e';
-            end
-%             if particleNumber2 == f2(l) && particleNumber1 == f1(l)
+%             if f1(l) == particleNumber1 && f2(l) == particleNumber2
 %                 error()
 %             end
-            valid =true;
-            if (contactG2p2 > 0.33 && contactG2p1 >0.5) || (contactG2p2 > 0.5 && contactG2p1 >0.33) || valid == true
-            particle(f1(l)).z= particle(f1(l)).z +1; %increase coordination number
-            particle(f1(l)).contactG2s(particle(f1(l)).z)=contactG2p1; %remember the g2 value of the current contact area
-            particle(f1(l)).contactIs(particle(f1(l)).z)=contactIp1;
-            particle(f1(l)).color(particle(f1(l)).z)='y';
-            particle(f1(l)).neighbours(particle(f1(l)).z) = particle(f2(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
-            particle(f1(l)).betas(particle(f1(l)).z) = nominalAngle; %the contact angle to particle m is now noted in the particle l datastructure
-            particle(f2(l)).z= particle(f2(l)).z +1; %increase coordination number
-            particle(f2(l)).contactG2s(particle(f2(l)).z)=contactG2p2; %remember the g2 value of the current contact area
-            particle(f2(l)).contactIs(particle(f2(l)).z)=contactIp2;
-            particle(f2(l)).color(particle(f2(l)).z)='y';
-            particle(f2(l)).neighbours(particle(f2(l)).z) = particle(f1(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
-            particle(f2(l)).betas(particle(f2(l)).z) = nominalAngle - pi;
+            if ~isempty(angle(angle==1)) && ~isempty(angle2(angle2==1))
+
+                particle(f1(l)).z= particle(f1(l)).z +1; %increase coordination number
+                particle(f1(l)).contactG2s(particle(f1(l)).z)=contactG2p(1); %remember the g2 value of the current contact area
+                particle(f1(l)).contactIs(particle(f1(l)).z)=contactIp(1);
+                particle(f1(l)).color(particle(f1(l)).z)='y';
+                particle(f1(l)).neighbours(particle(f1(l)).z) = particle(f2(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
+                particle(f1(l)).betas(particle(f1(l)).z) = nominalAngle; %the contact angle to particle m is now noted in the particle l datastructure
+                particle(f2(l)).z= particle(f2(l)).z +1; %increase coordination number
+                particle(f2(l)).contactG2s(particle(f2(l)).z)=contactG2p(2); %remember the g2 value of the current contact area
+                particle(f2(l)).contactIs(particle(f2(l)).z)=contactIp(2);
+                particle(f2(l)).color(particle(f2(l)).z)='y';
+                particle(f2(l)).neighbours(particle(f2(l)).z) = particle(f1(l)).id; %particle m is now noted as a neigbour in the particle l datastructure
+                particle(f2(l)).betas(particle(f2(l)).z) = nominalAngle2;
+            
             else
                 s = length(particle(f1(l)).nonContact);
                 w = length(particle(f2(l)).nonContact);
                 particle(f1(l)).nonContact(s+1) = f2(l);
                 particle(f2(l)).nonContact(w+1) = f1(l);
             end
-         else
-                s = length(particle(f1(l)).nonContact);
-                w = length(particle(f2(l)).nonContact);
-                particle(f1(l)).nonContact(s+1) = f2(l);
-                particle(f2(l)).nonContact(w+1) = f1(l);
-        end
-        
-        if f1(l) == particleNumber1 && f2(l) == particleNumber2
-        figure1 = figure;
-        subplot(2,2,1, 'Parent', figure1)
-
-       
-        
-        imshow(croppedImg2);
-        title([num2str(f2(l)),',', num2str(particle(f2(l)).g2)]);
-        
-        hold on;
-        contactLoc2 = [r2+padding+r2.*cos(newlocs2), r2+padding+r2.*sin(newlocs2)];
-        
-        plot(r2+padding+r2.*cos(nominalAngle-pi), r2+padding+r2.*sin(nominalAngle-pi),'yo')
-        if ~isempty(contactLoc2)
-        plot(contactLoc2(:,1), contactLoc2(:,2), 'ro');
-        plot(r2+padding, r2+padding, 'gx')
-        end
-        subplot(2,2,3, 'Parent', figure1);
-        plot(profile2(:,1), profile2(:,2));
-        title(num2str(f2(l)))
-        hold on;
-        plot(newlocs2, newpks2, 'o');
-        
-        subplot(2, 2, 2, 'Parent', figure1);
-        
-        
-        %mask_1 = (r-r*maskwidth_fraction<R & R<r-1);
-        imshow(croppedImg);
-        %maskedImg = uint8(double(croppedImg).*mask_1);
-        title([num2str(f1(l)),',', num2str(particle(f1(l)).g2)]);
-        hold on;
-        contactLoc = [r1+padding+r1.*cos(newlocs), r1+padding+r1.*sin(newlocs)];
-        hold on;
-        plot(r1+padding+r1.*cos(nominalAngle), r1+padding+r1.*sin(nominalAngle),'yo', 'MarkerSize', 10)
-        if ~isempty(contactLoc)
-        plot(contactLoc(:,1), contactLoc(:,2), 'ro');
-        plot(r1+padding, r1+padding, 'gx')
-        plot(r1+r1*cos(0), r1+r1*sin(0), 'bo')
-        end
-        subplot(2,2,4, 'Parent', figure1)
-        plot(profile(:,1), profile(:,2));
-        hold on;
-        plot(newlocs, newpks, 'o');
-        end
-        
-%         subplot(2,3,6, 'Parent', figure1)
-%         plot(c);
-%         hold on;
-%         plot(loc, peaks, 'o');
         
         
         
-        if isempty(particle(f1(l)).contactPos)
-        particle(f1(l)).contactPos = newlocs;
-        particle(f1(l)).contactInt = newpks;
-        end
-    if isempty(particle(f2(l)).contactPos)
-        particle(f2(l)).contactPos = newlocs2;
-        particle(f2(l)).contactInt = newpks2;
-    end
-        %end
-    end
+        
+            if isempty(particle(f1(l)).contactPos)
+                particle(f1(l)).contactPos = locs;
+                particle(f1(l)).contactInt = pks;
+            end
+            if isempty(particle(f2(l)).contactPos)
+                particle(f2(l)).contactPos = locs2;
+                particle(f2(l)).contactInt = pks2;
+            end
+        
+            end
     
 
-    %end
-    %end
     
-end
+    
+        end
 %% 
 
 %Check if any of the walls is a neighbour as well
@@ -829,21 +580,9 @@ for l = 1:length(bwi)
         particle(bwi(l)).neighbours(particle(bwi(l)).z) = -4; %the wall is now noted as a neigbour in the particle l datastructure
         particle(bwi(l)).betas(particle(bwi(l)).z) = pi/2; %the contact angle to the wall is now noted in the particle l datastructure
         particle(bwi(l)).color(particle(bwi(l)).z)='g';
-        else
-        croppedImg = (Gimgfine(uint16(y-r-padding):uint16(y+r+padding),uint16(x-r-padding):uint16(x+r+padding)));
-        [profile] = contactfind(croppedImg, x, y, r-1, bwi(l), verbose);
+    else
+        [pks, locs] = peakfinder(x, y, r, Gimgfine, minpeakheight, minpeakprominence,minpeakprom_main, padding )
         
-        if any(profile(:,1)>minpeakheight)
-        [pkints, locints] = findpeaks(profile(:,2),profile(:,1), "MinPeakHeight", minpeakheight,'MinPeakProminence', minpeakprominence, 'MaxPeakWidth', pi);
-        else
-            pkints = [];
-            locints = [];
-        end
-        [pks,locs] =findpeaks(profile(:,2), profile(:,1),'MinPeakProminence',minpeakprom_main,'MaxPeakWidth', pi);
-        pks = [pks;pkints];
-        locs = [locs;locints];
-        inds = find(locs>(pi));
-        locs(inds) = locs(inds)-2*pi;
 
         newlocs = [];
         newpks = [];
@@ -946,7 +685,7 @@ for n=1:N
                     contactYp2 = y + (r - CR) * sin(atan2(y1-y,x1-x));
                     contactImg = im2double(imcrop(Gimgfine,[contactXp2-CR contactYp2-CR CR*2 CR*2]));
     
-                     contactImg = contactImg.*mask;
+                     contactImg = contactImg.*maskCR;
 %                      figure;
 %                      imshow(contactImg);
                      contactIp2 = sum(sum(contactImg));
@@ -958,7 +697,7 @@ for n=1:N
                     contactYp1 = y1 + (r1 - CR) * sin(atan2(y-y1,x-x1));
                     contactImg1 = im2double(imcrop(Gimgfine,[contactXp1-CR contactYp1-CR CR*2 CR*2]));
     
-                     contactImg1 = contactImg1.*mask;
+                     contactImg1 = contactImg1.*maskCR;
 %                      figure;
 %                      imshow(contactImg);
                      contactIp1 = sum(sum(contactImg1));
@@ -991,7 +730,32 @@ for n=1:N
         end
         
 
-
+%         elseif particle(n).z ==1 && particle(n).contactIs <4 && particle(n).edge ==0
+%             y1 = particle(n).y;
+%             x1 = particle(n).x;
+%             r1 = particle(n).r;
+%         
+%              croppedImg = (Gimgfine(uint16(y1-r1-padding):uint16(y1+r1+padding),uint16(x1-r1-padding):uint16(x1+r1+padding)));
+%              figure1 = figure;
+% 
+%              subplot(2,1,1, 'Parent', figure1)
+%              imshow(Gimgfine(uint16(y1-r1-50):uint16(y1+r1+50),uint16(x1-r1-50):uint16(x1+r1+50)));
+% 
+%              hold on;
+%              plot(r1*cos(particle(n).betas(1))+50+r1,50+r1+r1*sin(particle(n).betas(1)), 'o');
+%              title(num2str(particle(n).id))
+%              subplot(2,1,2, 'Parent', figure1)
+%         profile = contactfind(croppedImg, x1, y1, r1, n, verbose);
+%         newlocs = particle(n).contactPos;
+%         newpks = particle(n).contactInt;
+%         
+%         plot(profile(:,1), profile(:,2));
+%         hold on;
+%         plot(newlocs, newpks, 'o');
+%         
+%         angle = ismembertol(newlocs, particle(n).betas(1), 0.25);
+%         newneigh = find(angle==0);
+%         drawnow
     if ~isempty(pop)
     index = particle(n).nonContact(nonzeros(pop)); %check if n also is inside of the neighbour particles non-Contact
     for t=1:length(index)
@@ -1008,49 +772,47 @@ for n=1:N
 end
 end
    
-    
-    [num2str(sum([particle.z])), ' contacts detected'   ]
-    save([directory, files(imgnumb).name(1:end-4),'_preprocessing.mat'],'particle')
-    end
-
-
-    if verbose
-        h3 = figure(20);
-        hAx1 = subplot(1,1,1,'Parent', h3);
-        imshow(Gimgfine, 'Parent', hAx1);
-        hold (hAx1, 'on');
-        for n = 1:length(particle)
-            particle(n).id
-            z = particle(n).z; %get particle coordination number
-            if (z>0) %if the particle does have contacts
-                for m = 1:z %for each contact
-                    %draw contact lines
-                    lineX(1)=particle(n).x;
-                    lineY(1)=particle(n).y;
-                    lineX(2) = lineX(1) + particle(n).r * cos(particle(n).betas(m));
-                    lineY(2) = lineY(1) + particle(n).r * sin(particle(n).betas(m));
-                    plot(hAx1, lineX, lineY,particle(n).color(m),'LineWidth',2);
-                    
-                end
+if verbose
+h3 = figure(20);
+hAx1 = subplot(1,1,1,'Parent', h3);
+imshow(Gimgfine, 'Parent', hAx1);
+hold (hAx1, 'on');
+    for n = 1:length(particle)
+        particle(n).id;
+        %viscircles([particle(n).x, particle(n).y], particle(n).r, 'EdgeColor', particle(n).color);
+        z = particle(n).z; %get particle coordination number
+        if (z>0) %if the particle does have contacts
+            for m = 1:z %for each contact
+                %draw contact lines
+                lineX(1)=particle(n).x;
+                lineY(1)=particle(n).y;
+                lineX(2) = lineX(1) + particle(n).r * cos(particle(n).betas(m));
+                lineY(2) = lineY(1) + particle(n).r * sin(particle(n).betas(m));
+%                 cX = lineX(1) + (particle(n).r-CR) * cos(particle(n).betas(m));
+%                 cY = lineY(1) + (particle(n).r-CR) * sin(particle(n).betas(m));
+                plot(hAx1, lineX, lineY,particle(n).color(m),'LineWidth',2);
+                %text(hAx1,lineX(1),lineY(1),num2str(n),'Color','r')
             end
-            text(hAx1, particle(n).x, particle(n).y, num2str(n), 'Color', 'r')
         end
-        drawnow;
+        text(hAx1, particle(n).x, particle(n).y, num2str(n), 'Color', 'r')
     end
-
+drawnow;
 end
-
-
-
-
-%extra helper functions
+[num2str(sum([particle.z])), 'detected'   ]
+save([directory, files(imgnumb).name(1:end-4),'_preprocessing.mat'],'particle')
+    end
+   
+end
+%end
 function contactG2 = gradientcalculator(imgchunk)
     [gx,gy] = gradient(imgchunk);
     g2 = (gx.^2 + gy.^2);
     contactG2 = sum(sum(g2));
+
 end
 
-function [contactG2p contactIp]=contactspot(x, y, r, CR, Gimgd, maskCR)
+
+function [contactG2p, contactIp]=contactspot(x, y, r, CR, Gimgd, maskCR)
     contactangle = [atan2(y(2)-y(1),x(2)-x(1)), atan2(y(1)-y(2), x(1)-x(2))];
     contactXp = round(x + (r -  1 - CR).* cos(contactangle));
     contactYp = round(y + (r -1- CR).* sin(contactangle));
@@ -1068,6 +830,93 @@ function [contactG2p contactIp]=contactspot(x, y, r, CR, Gimgd, maskCR)
     %contactG2p = [G1 G2]
     
     
+end
+
+function [profile] = contactfind(croppedImg, r)
+    
+    [a,b] = size(croppedImg);
+    [X, Y] = meshgrid( (1:b)-r, (1:a)-r);
+    R = sqrt(X.^2 + Y.^2);
+    m2 = (2*r/3<R&R<r-1);
+
+    %maskedImg = double(croppedImg).*m2; %if you want to see what the
+    %masked image looks like
+    values = double(croppedImg(m2));
+
+
+    theta = atan2(Y, X);
+    angles = theta(m2);
+    combo = [angles, values];
+    profile = sortrows(combo);
+
+    profile = smoothdata(profile,1,'sgolay', length(profile)/25);
+
+    profX = [profile(1:uint16(length(profile)/4),1)+(2*pi), profile(1:uint16(length(profile)/4), 2)];
+    profile = [profile; profX];
+    profile = sortrows(profile);
+end
+
+function [finalpks, finallocs] = peakfinder(x, y, r, ind, Gimgfine, minpeakheight, minpeakprominence,minpeakprom_main, padding )
+        global particleNumber1 particleNumber2
+        croppedImg = (Gimgfine(round(y-r-padding):round(y+r+padding),round(x-r-padding):round(x+r+padding)));
+        
+        [profile] = contactfind(croppedImg, r-1);
+        
+        if any(profile(:,1)>minpeakheight)
+            [pkints, locints] = findpeaks(profile(:,2),profile(:,1), "MinPeakHeight", minpeakheight,'MinPeakProminence', minpeakprominence, 'MaxPeakWidth', pi);
+        else
+            pkints = [];
+            locints = [];
+        end
+        if any(profile(:,1)>minpeakprom_main)
+            [pks,locs] =findpeaks(profile(:,2), profile(:,1),'MinPeakProminence',minpeakprom_main,'MaxPeakWidth', pi);
+        else
+            pks = [];
+            locs = [];
+        end
+        pks = [pks;pkints];
+        locs = [locs;locints];
+        inds = find(locs>(pi));
+        locs(inds) = locs(inds)-2*pi;
+
+        [a, in] = uniquetol(locs, pi/12);
+        [b] = uniquetol(locs, pi/12,'highest');
+        finallocs = mean([a, b], 2);
+        finalpks = pks(in);
+
+        if ind == particleNumber1 || ind == particleNumber2
+            figure1 = figure;
+            subplot(2,1,1, 'Parent', figure1)
+
+       
+        
+            imshow(croppedImg);
+            title(num2str(ind));
+        
+            hold on;
+            contactLoc2 = [r+r.*cos(locs), r+r.*sin(locs)];
+            contactLoc = [r+r.*cos(finallocs), r+r.*sin(finallocs)];
+            %plot(r+r.*cos(nominalAngle), r+r.*sin(nominalAngle-pi),'yo')
+            if ~isempty(contactLoc2)
+            plot(contactLoc2(:,1), contactLoc2(:,2), 'ro');
+            plot(contactLoc(:,1), contactLoc(:,2), 'bo');
+            plot(r, r, 'gx')
+            end
+            subplot(2,1,2, 'Parent', figure1);
+            plot(profile(:,1), profile(:,2));
+            title(num2str(ind))
+            hold on;
+            plot(locs, pks, 'o');
+            plot(finallocs, pks(1:length(finallocs)), 'o');
+        
+        
+        end
+        
+%         subplot(2,3,6, 'Parent', figure1)
+%         plot(c);
+%         hold on;
+%         plot(loc, peaks, 'o');
+        
 end
 % function calibrateparameters()
 

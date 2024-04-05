@@ -117,7 +117,7 @@ end
 neworder =sortrows(neworder,[1,2]);
 
 
-dout = fopen([directory,'centers_tracked.txt'],'w');
+out = fopen([directory,'centers_tracked.txt'],'w');
 fprintf(out,['frame', ',', 'particleID', ',', 'x' ',' 'y', ',','r',',','edge''\n']);
 fclose(out);
 writematrix(neworder,[directory,'centers_tracked.txt'], 'WriteMode', 'append');
@@ -126,8 +126,8 @@ writematrix(neworder,[directory,'centers_tracked.txt'], 'WriteMode', 'append');
 %exports original positions
 if boundaryType == "annulus"
     rearrange2 = neworder;
-    x = rearrange(:,3);
-    y = rearrange(:,4);
+    x = neworder(:,3);
+    y = neworder(:,4);
 
     midx = 6304; %size of image
     [theta,r] = cart2pol(x-midx/2,y-midx/2);
@@ -162,11 +162,11 @@ if verbose
     pic = imread([directory, image(1).name]);
     imshow(pic);
     hold on;
-    N = unique(rearrange(:,2));
+    N = unique(neworder(:,2));
     cm = colormap(parula(size(N,1))); 
     for frame = 1:length(N)
-        ind = find(rearrange(:,2) ==frame);
-        plot(rearrange(ind,3), rearrange(ind,4),'Color',cm(frame,:));
+        ind = find(neworder(:,2) ==frame);
+        plot(neworder(ind,3), neworder(ind,4),'Color',cm(frame,:));
         hold on;
     end
 end
