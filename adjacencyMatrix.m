@@ -4,10 +4,11 @@ function adjacencyMatrix(directory, fileNames, boundaryType, frameidind,verbose)
 % % % %topDirectory = './DATA/test/Step09/'
 % fileNames = 'img*' %image format and regex
 % %
+directoryini = directory
 if boundaryType == "annulus"
-    directory = [directory, 'warpedimg/']
+    directory = [directory, 'warpedimg/'];
 end
-files = dir([directory,fileNames(1:end-4),'_solved_update.mat']) %which files are we processing ?
+files = dir([directoryini,'solved/',fileNames(1:end-4),'_solved_update.mat']) %which files are we processing ?
 nFrames = length(files) %how many files are we processing ?
 %nFrames = 1
 %camImageFileName = '/eno/cllee3/DATA/230420/150Hz_2fps_run1/warpedimg/150Hz_*warped.tif'
@@ -19,7 +20,7 @@ fmin = 0.000001; %minimum force (in Newton) to consider a contact a valid contac
 fmax = 1000; %maximum force (in Newton) to consider a contact a valid contact
 emax = 2800; %maximum fit error/residual to consider a contact a valid contact
 fs=16; %plot font size
-verbose = false; %make lots of plots as we go
+%verbose = false; %make lots of plots as we go
 
 % jut in case your data coordinate system is offset from the image
 % coordinate system (i.e. you only processed a small part of a larger
@@ -35,39 +36,39 @@ verbose = false; %make lots of plots as we go
 %aID = 1; %Global contact counter over all contacts in all cycles.
 
 if go==true
-for cycle = 1245:nFrames %loop over these cycles 
+for cycle = 112:nFrames %loop over these cycles 
     %cycle = cycle+820
     clearvars particle;
     clearvars contact;
     
     %input filnames
-    peOutfilename = [directory,files(cycle).name] %input filename 
+    peOutfilename = files(cycle).name %input filename 
     if boundaryType =="airtable"
         camImageFileName = [peOutfilename(1:end-18),'.jpg'];  %adjusted force image filename
     elseif boundaryType == "annulus"
-        camImageFileName = [peOutfilename(1:end-18),'.tif'];  %adjusted force image filename
+        camImageFileName = [directoryini, 'warpedimg/',peOutfilename(1:end-18),'.tif'];  %adjusted force image filename
     end
 
     %camImageFileName = [directory,'100Hz_1fps_Img0021warped.tif'];  %adjusted force image filename 
    
     %output filenames
     %workspacefilename =  [peOutfilename(1:end-9),'-postProcessingWorkspace.mat']; 
-    workspacefilename =  [peOutfilename(1:end-10),'-postProcessingWorkspace.mat']; 
+    %workspacefilename =  [peOutfilename(1:end-10),'-postProcessingWorkspace.mat']; 
     %synthImgFilename = [peOutfilename(1:end-10),'update-Synth.jpg'];  %output filename 
-    adjMatAbsFilename = [peOutfilename(1:end-11),'-joAdjacencyAbs.dlm'];  %output filename 
-    adjMatNorFilename = [peOutfilename(1:end-11),'-joAdjacency_N.dlm'];
-     adjMatTanFilename = [peOutfilename(1:end-11),'-joAdjacency_T.dlm'] ;
-     particlelocFilename = [peOutfilename(1:end-10),'-particle.dlm'];
+    adjMatAbsFilename = [directoryini, 'adjacency/',peOutfilename(1:end-11),'-joAdjacencyAbs.dlm'];  %output filename 
+    adjMatNorFilename = [directoryini, 'adjacency/',peOutfilename(1:end-11),'-joAdjacency_N.dlm'];
+     adjMatTanFilename = [directoryini, 'adjacency/',peOutfilename(1:end-11),'-joAdjacency_T.dlm'] ;
+     %particlelocFilename = [peOutfilename(1:end-10),'-particle.dlm'];
     % NO PARAMETERS SHOULD BE SET BY HAND BELOW THIS LINE
 
     %check if the data we want to read exists
     %if it does, load it, else abort
-    if ~(exist(peOutfilename, 'file') == 2) %if the file we try to open does not exist
+    if ~(exist([directoryini, 'solved/',peOutfilename], 'file') == 2) %if the file we try to open does not exist
         display(['File not Found:', peOutfilename]); %complain about it
         return %and end the execution of this script
     else
-        load(peOutfilename); %read peDiscSolve ouput
-        particle = pres;
+        pres = load([directoryini, 'solved/', peOutfilename]); %read peDiscSolve ouput
+        particle = pres.pres;
         NN = length(particle);
         IDN = max([particle.id]);
     end
@@ -92,7 +93,7 @@ for cycle = 1245:nFrames %loop over these cycles
         z = particle(n).z; %get coordination number
         r = particle(n).r; %get particle radius in pixel
         rm = particle(n).rm; %get particle radius in meters
-        if(length(particle(n).neighbours) > 0) % particle is in contact
+        if ~isempty(particle(n).neighbours) % particle is in contact
             contacts = particle(n).neighbours; %get IDs of all contacting particles
             betas = particle(n).betas+pi; %get the beta angle (position of contact point) associated with each contact
             forces = particle(n).forces; %get the force associated with each contact
@@ -118,19 +119,19 @@ for cycle = 1245:nFrames %loop over these cycles
                     ids = [particle.id];
                     tind1m = ids == targetid;
                     tind1 = find(tind1m);
-%                     contact(cID).id2 = targetid; %second particle involved in this contact 
-%                     contact(cID).x = particle(n).x;
-%                     contact(cID).y = particle(n).y;
-%                     contact(cID).fAbs = forces(m); %absolute force
-%                     contact(cID).fNorm = forces(m)*cos(alphas(m)); %normal force (see Eq. 4.16)
-%                     contact(cID).fTan = forces(m)*sin(alphas(m)); %tangential force
-%                     contact(cID).alpha = alphas(m); %the alpha angle (direction of force) associated with this contact
-%                     contact(cID).beta = betas(m); %the beta angle (position of contact point) associated with this contact  
-%                     contact(cID).contactX =  r * cos(betas(m)-pi); %x component of vector to contact point
-%                     contact(cID).contactY =  r * sin(betas(m)-pi); %y component of vector to contact point
-%                     contact(cID).error = err; %fit error for this particle (the first particle in the contact)
-% % 
-%                     cID = cID + 1; %increment contact counter
+                    contact(cID).id2 = targetid; %second particle involved in this contact 
+                    contact(cID).x = particle(n).x;
+                    contact(cID).y = particle(n).y;
+                    contact(cID).fAbs = forces(m); %absolute force
+                    contact(cID).fNorm = forces(m)*cos(alphas(m)); %normal force (see Eq. 4.16)
+                    contact(cID).fTan = forces(m)*sin(alphas(m)); %tangential force
+                    contact(cID).alpha = alphas(m); %the alpha angle (direction of force) associated with this contact
+                    contact(cID).beta = betas(m); %the beta angle (position of contact point) associated with this contact  
+                    contact(cID).contactX =  r * cos(betas(m)-pi); %x component of vector to contact point
+                    contact(cID).contactY =  r * sin(betas(m)-pi); %y component of vector to contact point
+                    contact(cID).error = err; %fit error for this particle (the first particle in the contact)
+% 
+                    cID = cID + 1; %increment contact counter
 %                     
 %                     allContacts(aID).fAbs = forces(m); %absolute force
 %                     allContacts(aID).fNorm = forces(m)*cos(alphas(m)); %normal force (see Eq. 4.16)
@@ -246,12 +247,12 @@ for cycle = 1245:nFrames %loop over these cycles
 end
 end
 %%
-[directory,fileNames(1:end-4),'_solved-joAdjacencyAbs.dlm']
-Adj_ABS = dir([directory,fileNames(1:end-4),'_solved-joAdjacencyAbs.dlm']);
-Adj_T = dir([directory,fileNames(1:end-4),'_solved-joAdjacency_T.dlm']);
-Adj_N = dir([directory,fileNames(1:end-4),'_solved-joAdjacency_N.dlm']);
-if ~isfile([directory, 'centers_tracked.txt']);
-    centers = dlmread([directory, 'centers_tracked.txt'],',', 1,0);
+[directoryini,fileNames(1:end-4),'_solved-joAdjacencyAbs.dlm']
+Adj_ABS = dir([directoryini, 'adjacency/',fileNames(1:end-4),'_solved-joAdjacencyAbs.dlm']);
+Adj_T = dir([directoryini, 'adjacency/',fileNames(1:end-4),'_solved-joAdjacency_T.dlm']);
+Adj_N = dir([directoryini,'adjacency/',fileNames(1:end-4),'_solved-joAdjacency_N.dlm']);
+if ~isfile([directoryini, 'centers_tracked.txt']);
+    centers = dlmread([directoryini, 'centers_tracked.txt'],',', 1,0);
     %Adj_T_Newton = dir([directory,'*newtonized2-joAdjacency_NewtonizedT.dlm']);
     %Adj_N_Newton = dir([directory,'*newtonized2-joAdjacency_NewtonizedN.dlm']);
     % Adj_theta = dir([directory,'*solved-joAdjacencyN.dlm']);
@@ -262,7 +263,7 @@ if ~isfile([directory, 'centers_tracked.txt']);
     %numbers = [10, 18]
 
     unique(centers(:,1));
-    for i = 1:nFrames
+    for i = 1:216
         %for i = 1:length(2)
         frameid = str2num(Adj_T(i).name(frameidind:frameidind+3))
         T = dlmread([directory,Adj_T(i).name]);
@@ -296,10 +297,11 @@ else
 
     
     for i = 1:length(Adj_T)
+    %for i = 1:
     Adj_T(i).name;
     frameid = str2num(Adj_T(i).name(frameidind:frameidind+3))
-    T = dlmread([directory,Adj_T(i).name]);
-    N = dlmread([directory,Adj_N(i).name]);
+    T = dlmread([directoryini, 'adjacency/',Adj_T(i).name]);
+    N = dlmread([directoryini, 'adjacency/',Adj_N(i).name]);
     
 
 %     Theta = dlmread([directory,Adj_theta(i).name]);
@@ -323,7 +325,7 @@ end
     end
 
 %fram number, particle 1, particle id 2, tangential force, normal force
-dlmwrite([directory,'Adjacency_list.txt'],Adj_list);
+dlmwrite([directoryini,'Adjacency_list.txt'],Adj_list);
 
 
 

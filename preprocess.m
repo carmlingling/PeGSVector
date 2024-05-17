@@ -1,26 +1,28 @@
 %function particle_detect(directory)
 % A script to find particle locations
-function preprocess(directory, imname, boundaryType, verbose)
+function preprocess(topdirectory, imname, boundaryType, verbose)
 % directory = './';
 % imname = 'test.jpg';
 % boundaryType = "annulus";
 % verbose = false;
+directory = [topdirectory, 'images/']
 images=dir([directory,imname]);
 nFrames = length(images);
 %nFrames = 1
 
-cen = [2710, 2768]; %measure the center of annulus in images taken by the camera
-rad = [2830/2, 5330/2];
-
+%cen = [2710, 2768]; %measure the center of annulus in images taken by the camera
+%rad = [2830/2, 5330/2];
+cen = [58+5313/2, 110+5313/2];
+rad = [2783/2, 5313/2];
 %line 58 contains experiment specific values)
-xLimitsOut = [1,6304]
-yLimitsOut = [1,6304] %can be calculated just before imwarp is called but it is very slow. Recommend doing once then hardcoding in for speed)
+xLimitsOut = [1,6304];
+yLimitsOut = [1,6304]; %can be calculated just before imwarp is called but it is very slow. Recommend doing once then hardcoding in for speed)
 %% for doing camera transforms for both camera lens distortion and particle distance correction on annulus
 
 
 if boundaryType == "annulus"
-    if not(isfolder(append(directory,'warpedimg'))) %make a new folder with warped images
-    mkdir(append(directory,'warpedimg'))
+    if not(isfolder(append(topdirectory,'warpedimg'))) %make a new folder with warped images
+    mkdir(append(topdirectory,'warpedimg'))
     end
     im1=imread([directory,images(1).name]);
     
@@ -38,7 +40,7 @@ if boundaryType == "annulus"
     %frame = frame+130
    
     
-    if ~isfile(append(directory,'warpedimg/',images(frame).name(1:end-4),'warped.tif')) %check to see if images are already warped
+    if ~isfile(append(topdirectory,'warpedimg/',images(frame).name(1:end-4),'warped.tif')) %check to see if images are already warped
         frame
         im1=imread([directory,images(frame).name]);
         im1 = im1(:,:,1:2);
@@ -80,7 +82,7 @@ if boundaryType == "annulus"
         im =imwarp(im1,tform, "OutputView",Rout);
         im(:,:,3) = 0;
     
-        imwrite(im, append(directory,'warpedimg/',images(frame).name(1:end-4),'warped.tif'))
+        imwrite(im, append(topdirectory,'warpedimg/',images(frame).name(1:end-4),'warped.tif'))
 
         %'done image warp'
     

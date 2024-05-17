@@ -6,7 +6,9 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
 % radiusRange = [40, 57];
 % boundaryType = "annulus";
 % verbose = false;
-
+    if not(isfolder(append(directory,'particles'))) %make a new folder with particle centers
+        mkdir(append(directory,'particles'));
+    end
     if boundaryType == "annulus"
         
         images=dir([directory, '/warpedimg/',imname(1:end-4),'warped.tif']);
@@ -38,12 +40,12 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
                 h1 = figure(1);
                 ax1 = axes('Parent', h1);
 
-                subplot(1, 2, 1)
+                %subplot(1, 2, 1)
                 imshow(red)
 
-                subplot(1, 2, 2)
-                green =imadjust(green);
-                imshow(green);
+                %subplot(1, 2, 2)
+                %green =imadjust(green);
+                %imshow(green);
                 hold on;
                 axis on
             end
@@ -105,7 +107,7 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
             v(closeind) = [];
 
             if verbose
-                viscircles([u, v], rt,'EdgeColor', 'b')
+                viscircles([xt, yt], rt,'EdgeColor', 'b')
             end
             %%
             %now we look for particles with a dramatic overlap
@@ -141,7 +143,7 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
             v(badind) = [];
             
             if verbose
-                viscircles([u, v], rt,'EdgeColor','g'); %draw particle outline
+                viscircles([xt, yt], rt,'EdgeColor','g'); %draw particle outline
                 hold on;
             end
             %%
@@ -183,8 +185,7 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
             edges(owi) = 1;
             edges(iwi) = -1;
             particle = [xt, yt, rt, edges];
-            
-            writematrix(particle,[directory,'warpedimg/', images(frame).name(1:end-4),'_centers.txt'])
+           writematrix(particle,[directory,'particles/', images(frame).name(1:end-4),'_centers.txt'])
         end
 
     elseif boundaryType == "airtable"
@@ -278,8 +279,8 @@ function particleDetect(directory, imname, radiusRange, boundaryType, verbose)
                 end
             end
             particle = [centers(:,1), centers(:,2), radii, edges];
-            %[directory, images(frame).name(1:end-4),'_centers.txt']
-            writematrix(particle,[directory, images(frame).name(1:end-4),'_centers.txt']);
+            [directory,'particles/',  images(frame).name(1:end-4),'_centers.txt']
+            dlmwrite([directory,'particles/', images(frame).name(1:end-4),'_centers.txt'], particle);
 
         end
     end

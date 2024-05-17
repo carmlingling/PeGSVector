@@ -60,7 +60,7 @@
     %frame = 2
     %frame = frame +3
 
-function particle = disksolve(particle, maskradius, scaling, fileName);
+function particle = disksolve(particle, maskradius, scaling, directory, fileName);
     %fileName = [directory,files(frame).name]; %which file/frame are we processing now ?
     maskradius = maskradius / 2; %I did an unwise choice in naming this
     %load(fileName); %load the particle data file to process
@@ -170,7 +170,7 @@ function particle = disksolve(particle, maskradius, scaling, fileName);
     end
  
     %save the result
-    save([fileName(1:end-17),'solved.mat'],'pres');
+    save([directory,'solved/',fileName(1:end-17),'solved.mat'],'pres');
     particle = pres;
     %clearvars('-except', initialVars{:})
 

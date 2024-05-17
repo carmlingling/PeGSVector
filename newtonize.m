@@ -9,7 +9,7 @@ filename = '*solved.mat';
 imname = '*Synth.jpg';
 imagefiles = dir([directory,'/synthImg/', imname]);
 %directory = [directory,'warpedimg/'];
-forcefiles = dir([directory,'warpedimg/', filename]);
+forcefiles = dir([directory,'solved/', filename]);
 
 
 fiterrorcutoff = 1850;
@@ -18,7 +18,7 @@ cutoff = 1850;
 maskradius = 0.96/2;
 troubleid = []
 elseif boundaryType == "airtable"
-forcefiles = dir([directory, fileNames(1:end-4),'_solved.mat']);
+forcefiles = dir([directory,'solved/', fileNames(1:end-4),'_solved.mat']);
 imagefiles = dir([directory,'synthImg/', fileNames(1:end-4), '-Synth.jpg']);
 cutoff = 250;
 maskradius = 0.96/2;
@@ -603,7 +603,7 @@ end
 %     pres(n).synthImg = img;
 % end
 if boundaryType == "annulus"
-    save([directory, 'warpedimg/',forcefiles(frame).name(1:end-4),'_update.mat'],'pres');
+    save([directory, 'solved/',forcefiles(frame).name(1:end-4),'_update.mat'],'pres');
 else
     save([directory,forcefiles(frame).name(1:end-4),'_update.mat'],'pres');
 end

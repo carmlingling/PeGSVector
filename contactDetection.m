@@ -1,13 +1,13 @@
-%function contactDetection(directory, fileNames, boundaryType,frameidind,verbose)
+function contactDetection(directory, fileNames, boundaryType,frameidind,verbose)
 % %UNTITLED4 Summary of this function goes here
 % %   Detailed explanation goes here
 % 
 % 
-directory = './testdata/';
+directory = '/eno/cllee3/DATA/240506/test/';
 %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
 % %topDirectory = './DATA/test/Step09/'
-fileNames = '100Hz*.tif'; %image format and regex
-frameidind = 15;
+fileNames = '200Hz*.tif'; %image format and regex
+frameidind = 16;
 %
 
 boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
@@ -22,7 +22,7 @@ calibrate = false;
 global particleNumber1 particleNumber2
 particleNumber1 = 269;
 particleNumber2 = 1247;
-
+roach = false
 warning('off','signal:findpeaks:largeMinPeakHeight')
 
 %% thresholding limits
@@ -41,8 +41,9 @@ if boundaryType == "airtable"
     rednormal = 2;
     padding =1;
     sigma = 80; % ephraim
+    ending = '.jpg'
 elseif boundaryType == "annulus"
-    directory = [directory, 'warpedimg/'];
+    directorydata = [directory, 'warpedimg/'];
     minpeakheight = 0.10;
     minpeakprominence = 0.02;
     minpeakprom_main = 0.025;
@@ -58,14 +59,15 @@ elseif boundaryType == "annulus"
     padding = 1;
     sigma  = 50; %for blurring large scale features
     polarizerstrip = [[2731,2719,3643,3666];[212,212,6099,6100]];
+    ending = '.tif'
 end
 
 %% importing files
 
 [directory, fileNames]
-files = dir([directory, fileNames(1:end-4), '.tif']);
+files = dir([directorydata, fileNames(1:end-4),ending]);
 centersfile = dir([directory, 'centers_tracked.txt']);
-pData = readmatrix([directory,centersfile.name],"NumHeaderLines", 1); %Read Position data from centers file
+pData = readmatrix([directory,centersfile.name])%,"NumHeaderLines", 1); %Read Position data from centers file
 
 
 %% setting up mask
@@ -81,12 +83,12 @@ maskCR = double(sqrt(mask) <= CR-1);
 
 
 %% image manipulation
-for imgnumb = 1:1
+for imgnumb = 1:length(files)
     
     clear particle %reinitialize the particle structure
 
     %read in image
-    Img = imread([directory,files(imgnumb).name]);
+    Img = imread([directorydata,files(imgnumb).name]);
     Rimg = Img(:,:,1);
     Gimg = Img(:,:,2); %force image
    
@@ -100,6 +102,7 @@ for imgnumb = 1:1
         %Gimgd= im2double(Gimgd);
         stretchlim(Gimgp)
         Gimgd = imadjust(Gimgd,stretchlim(Gimgd));
+        Gimgfine = imadjust(Gimg, fineimadjust_limits); %super boosted contrast
         if verbose
             figure;
             imshow(Gimgp)
@@ -107,7 +110,7 @@ for imgnumb = 1:1
             title('Gimgp')
            
         end
-
+        frame = imgnumb
     elseif boundaryType == "annulus"
         
         bckgnd = poly2mask(polarizerstrip(1,:),polarizerstrip(2,:), length(Gimg), length(Gimg));
@@ -134,13 +137,13 @@ for imgnumb = 1:1
         Gimgd = imadjust(Gimg,imadjust_limits); %regular contrast
     
         Gimgfine = imadjust(Gimg, fineimadjust_limits); %super boosted contrast
-    
+        frame = str2double(files(imgnumb).name(frameidind:frameidind+3))
 
     end
    
 %% initialize data structure
     
-    frame = str2double(files(imgnumb).name(frameidind:frameidind+3))
+    
     
     data = find(pData(:,1) == frame);%from the centers information, find the particles that are in a the current frame
     
@@ -246,8 +249,8 @@ for imgnumb = 1:1
             %find peaks in intensity for each particle, record the value of
             %the peak and the angular location relative to the x axis of
             %each particle
-            [pks, locs] = peakfinder(x(1), y(1), r(1), f1(l), Gimgfine, minpeakheight, minpeakprominence, minpeakprom_main, padding);
-            [pks2, locs2] = peakfinder(x(2), y(2), r(2), f2(l), Gimgfine, minpeakheight, minpeakprominence, minpeakprom_main, padding);
+            [pks, locs] = peakfinder(x(1), y(1), r(1), f1(l), Gimgfine, minpeakheight, minpeakprominence, minpeakprom_main, padding, roach);
+            [pks2, locs2] = peakfinder(x(2), y(2), r(2), f2(l), Gimgfine, minpeakheight, minpeakprominence, minpeakprom_main, padding, roach);
     
             %compare the locations to whatever the nominal angle is (center
             %to center)
@@ -323,17 +326,15 @@ bwi = find(circs(:,1) + circs(:,3) + dtol*1.5 >= bottomwall);
 twi = find(circs(:,1) - circs(:,3) - dtol*1.5 <= topwall);
 
 for l = 1:length(lwi) %Runs through each index to check for contacts via gradients
-    x = circs(lwi(l),2);
-    y = circs(lwi(l),1);
+    x = [circs(lwi(l),2), circs(lwi(l),2)-(r-CR)];
+    y = [circs(lwi(l),1), circs(lwi(l),1)];
     r = circs(lwi(l),3);
     
     contactX = x-(r-CR);
     contactY = y;
     
-    contactImg = im2double(imcrop(Gimgd,[contactX-CR contactY-CR CR*2 CR*2]));
-    contactImg = contactImg.*mask;
-    contactG2 = gradientcalculator(contactImg);
     
+    contactG2p, contactIp= contactspot(x, y, r, CR, Gimgd, maskCR)
     
     if(contactG2 > contactG2Threshold)
         cI = sum(sum(contactImg));
@@ -581,7 +582,7 @@ for l = 1:length(bwi)
         particle(bwi(l)).betas(particle(bwi(l)).z) = pi/2; %the contact angle to the wall is now noted in the particle l datastructure
         particle(bwi(l)).color(particle(bwi(l)).z)='g';
     else
-        [pks, locs] = peakfinder(x, y, r, Gimgfine, minpeakheight, minpeakprominence,minpeakprom_main, padding )
+        [pks, locs] = peakfinder(x, y, r, Gimgfine, minpeakheight, minpeakprominence,minpeakprom_main, padding, roach)
         
 
         newlocs = [];
@@ -799,11 +800,11 @@ hold (hAx1, 'on');
 drawnow;
 end
 [num2str(sum([particle.z])), 'detected'   ]
-save([directory, files(imgnumb).name(1:end-4),'_preprocessing.mat'],'particle')
+save([directory, 'particles/', files(imgnumb).name(1:end-4),'_preprocessings.mat'],'particle')
     end
    
 end
-%end
+end
 function contactG2 = gradientcalculator(imgchunk)
     [gx,gy] = gradient(imgchunk);
     g2 = (gx.^2 + gy.^2);
@@ -827,9 +828,33 @@ function [contactG2p, contactIp]=contactspot(x, y, r, CR, Gimgd, maskCR)
     contactImg = contactImg.*maskCR;
     contactG2p(2,:)= gradientcalculator(contactImg);
     contactIp(2,:) = sum(sum(contactImg));
-    %contactG2p = [G1 G2]
+    %contactG2p = [G1 G2]  
+end
+
+function [contactG2p, contactIp]=contactspotwall(x, y, r, CR, Gimgd, maskCR)
+
+contactX = x;
+    contactY = y-(r-CR);
     
+    contactImg = im2double(imcrop(Gimgd,[contactX-CR contactY-CR CR*2 CR*2]));
+    contactImg = contactImg.*mask;
     
+    contactG2 = gradientcalculator(contactImg);
+    contactangle = [atan2(y(2)-y(1),x(2)-x(1)), atan2(y(1)-y(2), x(1)-x(2))];
+    contactXp = round(x + (r -  1 - CR).* cos(contactangle));
+    contactYp = round(y + (r -1- CR).* sin(contactangle));
+    
+    contactImg = im2double(imcrop(Gimgd,[contactXp(1)-CR contactYp(1)-CR CR*2 CR*2]));
+    contactImg = contactImg.*maskCR;
+    
+    contactG2p = [gradientcalculator(contactImg)];
+    contactIp = [sum(sum(contactImg))];
+    
+    contactImg = im2double(imcrop(Gimgd,[contactXp(2)-CR contactYp(2)-CR CR*2 CR*2]));
+    contactImg = contactImg.*maskCR;
+    contactG2p(2,:)= gradientcalculator(contactImg);
+    contactIp(2,:) = sum(sum(contactImg));
+    %contactG2p = [G1 G2]  
 end
 
 function [profile] = contactfind(croppedImg, r)
@@ -856,7 +881,7 @@ function [profile] = contactfind(croppedImg, r)
     profile = sortrows(profile);
 end
 
-function [finalpks, finallocs] = peakfinder(x, y, r, ind, Gimgfine, minpeakheight, minpeakprominence,minpeakprom_main, padding )
+function [finalpks, finallocs] = peakfinder(x, y, r, ind, Gimgfine, minpeakheight, minpeakprominence,minpeakprom_main, padding, roach )
         global particleNumber1 particleNumber2
         croppedImg = (Gimgfine(round(y-r-padding):round(y+r+padding),round(x-r-padding):round(x+r+padding)));
         
@@ -883,7 +908,7 @@ function [finalpks, finallocs] = peakfinder(x, y, r, ind, Gimgfine, minpeakheigh
         [b] = uniquetol(locs, pi/12,'highest');
         finallocs = mean([a, b], 2);
         finalpks = pks(in);
-
+        if roach == true
         if ind == particleNumber1 || ind == particleNumber2
             figure1 = figure;
             subplot(2,1,1, 'Parent', figure1)
@@ -911,7 +936,7 @@ function [finalpks, finallocs] = peakfinder(x, y, r, ind, Gimgfine, minpeakheigh
         
         
         end
-        
+        end
 %         subplot(2,3,6, 'Parent', figure1)
 %         plot(c);
 %         hold on;

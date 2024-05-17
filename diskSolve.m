@@ -1,4 +1,14 @@
-function particleSolve(directory, fileNames, boundaryType, verbose)
+%function particleSolve(directory, fileNames, boundaryType, verbose)
+
+directory = '/eno/cllee3/DATA/240506/test/';
+%topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
+% %topDirectory = './DATA/test/Step09/'
+fileNames = '200Hz*.tif'; %image format and regex
+frameidind = 16;
+%
+
+boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
+radiusRange = [40, 57];
 directoryini = directory
 if boundaryType == "annulus"
     directory = [directory, 'warpedimg/']
@@ -6,8 +16,16 @@ if boundaryType == "annulus"
 else
     images = dir([directoryini, fileNames])
 end
-[directory, fileNames(1:end-4),'_preprocessing.mat']
-files = dir([directory, fileNames(1:end-4),'_preprocessing.mat'])
+[directoryini,'/particles' fileNames(1:end-4),'_preprocessings.mat']
+files = dir([directoryini, 'particles/', fileNames(1:end-4),'_preprocessings.mat'])
+
+if not(isfolder(append(directoryini,'synthImg'))) %make a new folder with warped images
+    mkdir(append(directoryini,'synthImg'));
+end
+
+if not(isfolder(append(directoryini,'solved'))) %make a new folder with warped images
+    mkdir(append(directoryini,'solved'));
+end
 %how much of the particle diameter is used to fit the synthetic image 
 %(1 = use everything). Change this parameter only if the fit doesn't work 
 %correctly because of imaging artifacts at the particle boundary.
@@ -20,6 +38,10 @@ scaling = 0.5; %scale the image by this factor before doing the fit
 %fit options: play around with these, depending on the quality of your
 %images and the accuracy you want your result to have. 
 %Setting a good TolFun value can considerabely speed up your processing.
+
+
+
+%% 
 
 %fo_c = parallel.pool.Constant(@() fitoptions('lsqnonlin','Algorithm','levenberg-marquardt','MaxIter',200,'MaxFunEvals',400,'TolFun',0.01,'Display','final-detailed'))
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -34,10 +56,10 @@ hAx1 = subplot(1,1,1,'Parent', h3);
 for frame = 1:nFrames %loop over these frames 
 %for frame =1:9
     frame = frame
-    fileName = [directory,files(frame).name];
+    fileName = [directoryini,'particles/',files(frame).name]
     data = load(fileName);
     particle = data.particle;
-    particle = PeGSDiskSolve(particle, maskradius, scaling, fileName);
+    particle = PeGSDiskSolve(particle, maskradius, scaling, directoryini, files(frame).name);
 
     img = imread([directory, images(frame).name(1:end-4), '.tif']);
     bigSynthImg = zeros(size(img,1),size(img,2)); %make an empty image with the same size as the camera image
