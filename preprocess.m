@@ -5,7 +5,7 @@ function preprocess(topdirectory, imname, boundaryType, verbose)
 % imname = 'test.jpg';
 % boundaryType = "annulus";
 % verbose = false;
-directory = [topdirectory, 'images/']
+directory = [topdirectory, 'images/'];
 images=dir([directory,imname]);
 nFrames = length(images);
 %nFrames = 1
@@ -41,7 +41,7 @@ if boundaryType == "annulus"
    
     
     if ~isfile(append(topdirectory,'warpedimg/',images(frame).name(1:end-4),'warped.tif')) %check to see if images are already warped
-        frame
+        disp(frame)
         im1=imread([directory,images(frame).name]);
         im1 = im1(:,:,1:2);
         im1 = immultiply(im1, mask);
@@ -92,5 +92,4 @@ if boundaryType == "annulus"
     end
     end
 end
-
-    %dlmwrite([directory,images(frame).name(1:end-4),'centers_Improved.txt'],particle)
+disp('files done preprocessing')

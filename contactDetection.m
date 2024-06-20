@@ -3,26 +3,26 @@ function contactDetection(directory, fileNames, boundaryType,frameidind,verbose)
 % %   Detailed explanation goes here
 % 
 % 
-directory = '/eno/cllee3/DATA/240506/test/';
-%topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
-% %topDirectory = './DATA/test/Step09/'
-fileNames = '200Hz*.tif'; %image format and regex
-frameidind = 16;
-%
-
-boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
-radiusRange = [40, 57];
-%radiusRange = [45, 78]; %airtable
-
-verbose = true;
+% directory = '/eno/cllee3/DATA/240506/test/';
+% %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
+% % %topDirectory = './DATA/test/Step09/'
+% fileNames = '200Hz*.tif'; %image format and regex
+% frameidind = 16;
+% %
+% 
+% boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
+% radiusRange = [40, 57];
+% %radiusRange = [45, 78]; %airtable
+% 
+% verbose = true;
 % % % % % % % % % 
 
 %% calibrating values
 calibrate = false;
 global particleNumber1 particleNumber2
-particleNumber1 = 269;
-particleNumber2 = 1247;
-roach = false
+particleNumber1 = 893;
+particleNumber2 = 1608;
+roach = true;
 warning('off','signal:findpeaks:largeMinPeakHeight')
 
 %% thresholding limits
@@ -45,8 +45,8 @@ if boundaryType == "airtable"
 elseif boundaryType == "annulus"
     directorydata = [directory, 'warpedimg/'];
     minpeakheight = 0.10;
-    minpeakprominence = 0.02;
-    minpeakprom_main = 0.025;
+    minpeakprominence = 0.06;
+    minpeakprom_main = 0.06;
     pxPerMeter = 0.015/939;
     fsigma = 141; %photoelastic stress coefficient
     g2cal = 145; %Calibration Value for the g^2 method, can be computed by joG2cal.m
@@ -59,15 +59,15 @@ elseif boundaryType == "annulus"
     padding = 1;
     sigma  = 50; %for blurring large scale features
     polarizerstrip = [[2731,2719,3643,3666];[212,212,6099,6100]];
-    ending = '.tif'
+    ending = '.tif';
 end
 
 %% importing files
 
-[directory, fileNames]
+disp([directory, fileNames]);
 files = dir([directorydata, fileNames(1:end-4),ending]);
-centersfile = dir([directory, 'centers_tracked.txt']);
-pData = readmatrix([directory,centersfile.name])%,"NumHeaderLines", 1); %Read Position data from centers file
+centersfile = dir([directory, 'centers_trackedunsrt.txt']);
+pData = readmatrix([directory,centersfile.name]);%,"NumHeaderLines", 1); %Read Position data from centers file
 
 
 %% setting up mask
@@ -110,7 +110,7 @@ for imgnumb = 1:length(files)
             title('Gimgp')
            
         end
-        frame = imgnumb
+        frame = imgnumb;
     elseif boundaryType == "annulus"
         
         bckgnd = poly2mask(polarizerstrip(1,:),polarizerstrip(2,:), length(Gimg), length(Gimg));
@@ -137,7 +137,8 @@ for imgnumb = 1:length(files)
         Gimgd = imadjust(Gimg,imadjust_limits); %regular contrast
     
         Gimgfine = imadjust(Gimg, fineimadjust_limits); %super boosted contrast
-        frame = str2double(files(imgnumb).name(frameidind:frameidind+3))
+        frame = str2double(files(imgnumb).name(frameidind:frameidind+3));
+        disp(frame)
 
     end
    
@@ -334,7 +335,7 @@ for l = 1:length(lwi) %Runs through each index to check for contacts via gradien
     contactY = y;
     
     
-    contactG2p, contactIp= contactspot(x, y, r, CR, Gimgd, maskCR)
+    contactG2p, contactIp= contactspot(x, y, r, CR, Gimgd, maskCR);
     
     if(contactG2 > contactG2Threshold)
         cI = sum(sum(contactImg));
@@ -773,7 +774,7 @@ for n=1:N
 end
 end
    
-if verbose
+%if verbose
 h3 = figure(20);
 hAx1 = subplot(1,1,1,'Parent', h3);
 imshow(Gimgfine, 'Parent', hAx1);
@@ -798,9 +799,9 @@ hold (hAx1, 'on');
         text(hAx1, particle(n).x, particle(n).y, num2str(n), 'Color', 'r')
     end
 drawnow;
-end
-[num2str(sum([particle.z])), 'detected'   ]
-save([directory, 'particles/', files(imgnumb).name(1:end-4),'_preprocessings.mat'],'particle')
+%end
+disp([num2str(sum([particle.z])), 'detected' ])
+save([directory, 'particles/', files(imgnumb).name(1:end-4),'_preprocessingu.mat'],'particle')
     end
    
 end

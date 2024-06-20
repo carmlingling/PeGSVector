@@ -11,7 +11,7 @@ function PeGSModular(topDirectory, imageNames)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%User input values
 %topDirectory = '/mnt/ncsudrive/c/cllee3/MyEno/DATA/jekollme/20160701/Steps/artificial/'
-topDirectory = '/eno/cllee3/DATA/240506/test/' % location of image files
+topDirectory = '/eno/cllee3/DATA/240603/run1/' % location of image files
 %topDirectory = './testdata/square/'
 %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
 % %topDirectory = './DATA/test/Step09/'
@@ -23,7 +23,7 @@ boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
 radiusRange = [40, 57];
 %radiusRange = [45, 78]; %airtable
 
-verbose = true;
+verbose = false;
 
 % if (isfile([topDirectory, 'log.txt']))
 %     fid = fopen([topDirectory, 'log.txt'], 'r');
@@ -70,7 +70,7 @@ end
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %preprocess(topDirectory, imageNames, boundaryType, verbose);
-'files done preprocessing'
+
 %%
 %particleDetect(topDirectory, imageNames, radiusRange, boundaryType, verbose);
 'particles detected'
@@ -78,13 +78,13 @@ end
 %particleTrack(topDirectory, imageNames, boundaryType, frameidind, verbose, false);
 'trajectories connected'
 %%
-contactDetection(topDirectory, imageNames, boundaryType,frameidind, verbose)
+%contactDetection(topDirectory, imageNames, boundaryType,frameidind, verbose)
 'contacts detected'
 %%
 %diskSolve(topDirectory, imageNames, boundaryType, verbose)
 'forces solved'
 %%
-%newtonize(topDirectory, imageNames, boundaryType, verbose)
+newtonize(topDirectory, imageNames, boundaryType, verbose)
 'newtonized and edges handled'
 %%
 adjacencyMatrix(topDirectory, imageNames, boundaryType, frameidind,verbose)

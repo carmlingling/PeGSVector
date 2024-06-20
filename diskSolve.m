@@ -1,14 +1,14 @@
-%function particleSolve(directory, fileNames, boundaryType, verbose)
+function particleSolve(directory, fileNames, boundaryType, verbose)
 
-directory = '/eno/cllee3/DATA/240506/test/';
-%topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
-% %topDirectory = './DATA/test/Step09/'
-fileNames = '200Hz*.tif'; %image format and regex
-frameidind = 16;
-%
-
-boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
-radiusRange = [40, 57];
+% directory = '/eno/cllee3/DATA/240506/test/';
+% %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
+% % %topDirectory = './DATA/test/Step09/'
+% fileNames = '200Hz*.tif'; %image format and regex
+% frameidind = 16;
+% %
+% 
+% boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
+% radiusRange = [40, 57];
 directoryini = directory
 if boundaryType == "annulus"
     directory = [directory, 'warpedimg/']
@@ -16,8 +16,8 @@ if boundaryType == "annulus"
 else
     images = dir([directoryini, fileNames])
 end
-[directoryini,'/particles' fileNames(1:end-4),'_preprocessings.mat']
-files = dir([directoryini, 'particles/', fileNames(1:end-4),'_preprocessings.mat'])
+[directoryini,'/particles' fileNames(1:end-4),'_preprocessingu.mat']
+files = dir([directoryini, 'particles/', fileNames(1:end-4),'_preprocessingu.mat'])
 
 if not(isfolder(append(directoryini,'synthImg'))) %make a new folder with warped images
     mkdir(append(directoryini,'synthImg'));
@@ -55,7 +55,7 @@ hAx1 = subplot(1,1,1,'Parent', h3);
 
 for frame = 1:nFrames %loop over these frames 
 %for frame =1:9
-    frame = frame
+    disp(frame)
     fileName = [directoryini,'particles/',files(frame).name]
     data = load(fileName);
     particle = data.particle;
@@ -89,5 +89,5 @@ for frame = 1:nFrames %loop over these frames
 %         text(particle(n).x, particle(n).y, num2str(particle(n).fitError))
 %     end     
 drawnow;
-    imwrite(bigSynthImg, [directoryini,'synthImg/', images(frame).name(1:end-4), '-Synth.jpg']);
+    imwrite(bigSynthImg, [directoryini,'synthImg/', images(frame).name(1:end-4), '-Synthu.jpg']);
 end

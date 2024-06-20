@@ -5,19 +5,19 @@
 function particleTrack(directory,imname, boundaryType, frameidind, verbose, particleTrackToggle)
 
 % 
-directory = '/eno/cllee3/DATA/240506/testsorting/';
-%topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
-% %topDirectory = './DATA/test/Step09/'
-imname = '200Hz*.tif'; %image format and regex
-frameidind = 16;
-particleTrackToggle = true
-%
-
-boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
-radiusRange = [40, 57];
-%radiusRange = [45, 78]; %airtable
-
-verbose = true;
+% directory = '/eno/cllee3/DATA/240506/testsorting/';
+% %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
+% % %topDirectory = './DATA/test/Step09/'
+% imname = '200Hz*.tif'; %image format and regex
+% frameidind = 16;
+% particleTrackToggle = true
+% %
+% 
+% boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
+% radiusRange = [40, 57];
+% %radiusRange = [45, 78]; %airtable
+% 
+% verbose = true;
 
 %handling specific file structure stuff
 if boundaryType == "annulus"

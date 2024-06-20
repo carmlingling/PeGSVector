@@ -11,12 +11,12 @@ function PeGSModular(topDirectory, imageNames)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%User input values
 %topDirectory = '/mnt/ncsudrive/c/cllee3/MyEno/DATA/jekollme/20160701/Steps/artificial/'
-topDirectory = '/eno/cllee3/DATA/240503/run1/' % location of image files
+topDirectory = '/eno/cllee3/DATA/240603/run1/' % location of image files
 %topDirectory = './testdata/square/'
 %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
 % %topDirectory = './DATA/test/Step09/'
-imageNames = '50Hz_5spfT_Img000*.jpg' %image format and regex
-frameidind = 15
+imageNames = '25Hz_10spfT_*.jpg'; %image format and regex
+frameidind = 16;
 %
 %files = dir([topDirectory,imageNames])
 boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
@@ -61,15 +61,21 @@ verbose = false;
 if not(isfolder(append(topDirectory,'adjacency'))) %make a new folder with warped images
     mkdir(append(topDirectory,'adjacency'));
 end
+if not(isfolder(append(topDirectory,'solved'))) %make a new folder with warped images
+    mkdir(append(topDirectory,'solved'));
+end
+if not(isfolder(append(topDirectory,'synthImg'))) %make a new folder with warped images
+    mkdir(append(topDirectory,'synthImg'));
+end
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-preprocess(topDirectory, imageNames, boundaryType, verbose);
-'files done preprocessing'
+%preprocess(topDirectory, imageNames, boundaryType, verbose);
+
 %%
-particleDetect(topDirectory, imageNames, radiusRange, boundaryType, verbose);
+%particleDetect(topDirectory, imageNames, radiusRange, boundaryType, verbose);
 'particles detected'
 %%
-particleTrack(topDirectory, imageNames, boundaryType, frameidind, verbose, false);
+%particleTrack(topDirectory, imageNames, boundaryType, frameidind, verbose, false);
 'trajectories connected'
 %%
 contactDetection(topDirectory, imageNames, boundaryType,frameidind, verbose)

@@ -1,12 +1,21 @@
 %rebalancing forces for particles that have a fit error greater than a given
 %threshold
 function newtonize(directory, fileNames, boundaryType, verbose)
-
+% directory = '/eno/cllee3/DATA/240506/test/';
+% %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
+% % %topDirectory = './DATA/test/Step09/'
+% fileNames = '200Hz*.tif'; %image format and regex
+% verbose = true
+% frameidind = 16;
+% %
+% 
+% boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
+% radiusRange = [40, 57];
 if boundaryType == "annulus"
 
 %directory = '~/Desktop/230502_2/warpedimg/'
 filename = '*solved.mat';
-imname = '*Synth.jpg';
+imname = '*.jpg';
 imagefiles = dir([directory,'/synthImg/', imname]);
 %directory = [directory,'warpedimg/'];
 forcefiles = dir([directory,'solved/', filename]);
@@ -87,7 +96,7 @@ for frame=1:length(forcefiles)
     edges = find([pres.edge]~=0);
 
 
-
+    [imagefiles(frame).folder,'/', imagefiles(frame).name]
     I = imread([imagefiles(frame).folder,'/', imagefiles(frame).name]);
     
     imshow(I, 'Parent', hAx1);
@@ -638,4 +647,4 @@ imwrite(bigSynthImg,[directory,'synthImg/',imagefiles(frame).name(1:end-4),'upda
 % end
 %clear pres
 end
-end
+%end

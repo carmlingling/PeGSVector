@@ -1,16 +1,27 @@
 function adjacencyMatrix(directory, fileNames, boundaryType, frameidind,verbose)
-%  directory = '/eno/cllee3/DATA/esbilili/biaxial/img2/' % location of image files
-% % % %topDirectory = '/eno/cllee3/DATA/230502_2/'
-% % % %topDirectory = './DATA/test/Step09/'
-% fileNames = 'img*' %image format and regex
-% %
+% directory = '/eno/cllee3/DATA/240208/run2/' % location of image files
+% %topDirectory = './testdata/square/'
+% %topDirectory = '/Users/carmenlee/Desktop/20150731reprocesseduniaxial/'
+% % %topDirectory = './DATA/test/Step09/'
+% fileNames = '50Hz_5spfT_*.jpg'; %image format and regex
+% frameidind = 15;
+if not(isfolder(append(directory,'adjacency'))) %make a new folder with warped images
+    mkdir(append(directory,'adjacency'));
+end
+%
+%files = dir([topDirectory,imageNames])
+% boundaryType = "annulus"; %if airtable use "airtable" if annulus use "annulus"
+% radiusRange = [40, 57];
+%radiusRange = [45, 78]; %airtable
+
+
 directoryini = directory
 if boundaryType == "annulus"
     directory = [directory, 'warpedimg/'];
 end
-files = dir([directoryini,'solved/',fileNames(1:end-4),'_solved_update.mat']) %which files are we processing ?
+files = dir([directory,fileNames(1:end-4),'_solved_update.mat']) %which files are we processing ?
 nFrames = length(files) %how many files are we processing ?
-%nFrames = 1
+nFrames = 92
 %camImageFileName = '/eno/cllee3/DATA/230420/150Hz_2fps_run1/warpedimg/150Hz_*warped.tif'
 %camImageFileName = [directory, '100Hz_1fps_Img0021warped.tif']
 %camImageFileName = '/eno/cllee3/DATA/230428/run1/warpedimg/150Hz_*warped.tif'
@@ -20,7 +31,7 @@ fmin = 0.000001; %minimum force (in Newton) to consider a contact a valid contac
 fmax = 1000; %maximum force (in Newton) to consider a contact a valid contact
 emax = 2800; %maximum fit error/residual to consider a contact a valid contact
 fs=16; %plot font size
-%verbose = false; %make lots of plots as we go
+verbose = true; %make lots of plots as we go
 
 % jut in case your data coordinate system is offset from the image
 % coordinate system (i.e. you only processed a small part of a larger
@@ -36,7 +47,7 @@ fs=16; %plot font size
 %aID = 1; %Global contact counter over all contacts in all cycles.
 
 if go==true
-for cycle = 112:nFrames %loop over these cycles 
+for cycle = 90:nFrames %loop over these cycles 
     %cycle = cycle+820
     clearvars particle;
     clearvars contact;
@@ -63,11 +74,11 @@ for cycle = 112:nFrames %loop over these cycles
 
     %check if the data we want to read exists
     %if it does, load it, else abort
-    if ~(exist([directoryini, 'solved/',peOutfilename], 'file') == 2) %if the file we try to open does not exist
-        display(['File not Found:', peOutfilename]); %complain about it
+    if ~(exist([directoryini, 'warpedimg/',peOutfilename], 'file') == 2) %if the file we try to open does not exist
+        disp(['File not Found:', peOutfilename]); %complain about it
         return %and end the execution of this script
     else
-        pres = load([directoryini, 'solved/', peOutfilename]); %read peDiscSolve ouput
+        pres = load([directoryini, 'warpedimg/', peOutfilename]); %read peDiscSolve ouput
         particle = pres.pres;
         NN = length(particle);
         IDN = max([particle.id]);
@@ -199,7 +210,7 @@ for cycle = 112:nFrames %loop over these cycles
         %this suplot shows the original image, overlayed with the
         %detected contacts
 
-        if verbose
+        %if verbose
         %figure(1)
             %read and display the original image used as input to peDisc
             %img = imcrop(imread(camImageFileName),[xoffset, yoffset, xsize, ysize]); %force image
@@ -241,7 +252,7 @@ for cycle = 112:nFrames %loop over these cycles
 %          figure(3)
 %             imagesc(W); 
 %             colormap(jet);
-        end
+        %end
     
  
 end
