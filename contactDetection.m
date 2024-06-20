@@ -27,9 +27,9 @@ warning('off','signal:findpeaks:largeMinPeakHeight')
 
 %% thresholding limits
 if boundaryType == "airtable"
-    minpeakheight = 0.35;
-    minpeakprominence = 0.10;
-    minpeakprom_main = 0.20;
+    minpeakheight = 0.35; %minimum peak height needed to count as contact
+    minpeakprominence = 0.10; %assuming the above peak has a prominence of this number
+    minpeakprom_main = 0.20; %alternate peak finding condition is if any peak has a prominence greater than this (both peak finding conditions run when you run this code)
     pxPerMeter = 0.0077 / 74;
     fsigma = 100; %photoelastic stress coefficient
     g2cal = 100; %Calibration Value for the g^2 method, can be computed by joG2cal.m
